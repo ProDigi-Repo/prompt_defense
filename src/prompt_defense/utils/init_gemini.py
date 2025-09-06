@@ -22,7 +22,7 @@ def init_gemini_agent(
 
     settings = GoogleModelSettings(
         temperature=temperature,
-        google_thinking_config={"thinking_budget": 2048},
+        google_thinking_config={"thinking_budget": thinking_budget},
         # google_safety_settings=[
         #     {
         #         'category': HarmCategory.HARM_CATEGORY_HATE_SPEECH,
@@ -31,6 +31,6 @@ def init_gemini_agent(
         # ]
     )
     model = GoogleModel(model_name=model_name, provider=provider, settings=settings)
-    agent = Agent(model=model)
+    agent = Agent(model=model, system_prompt=system_prompt)
 
     return agent
