@@ -1,5 +1,5 @@
 from prompt_defense.utils.init_openai import initialize_ollama_model
-from prompt_defense.attack_prompts.manually import prompts
+from prompt_defense.attack_prompts.generated import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
 from prompt_defense.utils.json_storage import (
