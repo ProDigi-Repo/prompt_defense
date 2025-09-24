@@ -13,6 +13,7 @@ dependencies = [
     "levenshtein>=0.27.1",
     "load-dotenv>=0.1.0",
     "loguru>=0.7.3",
+    "ollama>=0.5.4",
     "pydantic-ai>=0.7.4",
     "scikit-learn>=1.7.2",
 ]

@@ -1142,6 +1142,19 @@ wheels = [
 ]
 
 [[package]]
+name = "ollama"
+version = "0.5.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/62/a36be4555e4218d6c8b35e72e0dfe0823845400097275cd81c9aec4ddf39/ollama-0.5.4.tar.gz", hash = "sha256:75857505a5d42e5e58114a1b78cc8c24596d8866863359d8a2329946a9b6d6f3", size = 45233, upload-time = "2025-09-16T00:25:25.785Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1b/af/d0a23c8fdec4c8ddb771191d9b36a57fbce6741835a78f1b18ab6d15ae7d/ollama-0.5.4-py3-none-any.whl", hash = "sha256:6374c9bb4f2a371b3583c09786112ba85b006516745689c172a7e28af4d4d1a2", size = 13548, upload-time = "2025-09-16T00:25:24.186Z" },
+]
+
+[[package]]
 name = "openai"
 version = "1.101.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1250,6 +1263,7 @@ dependencies = [
     { name = "levenshtein" },
     { name = "load-dotenv" },
     { name = "loguru" },
+    { name = "ollama" },
     { name = "pydantic-ai" },
     { name = "scikit-learn" },
 ]
@@ -1261,6 +1275,7 @@ requires-dist = [
     { name = "levenshtein", specifier = ">=0.27.1" },
     { name = "load-dotenv", specifier = ">=0.1.0" },
     { name = "loguru", specifier = ">=0.7.3" },
+    { name = "ollama", specifier = ">=0.5.4" },
     { name = "pydantic-ai", specifier = ">=0.7.4" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
 ]

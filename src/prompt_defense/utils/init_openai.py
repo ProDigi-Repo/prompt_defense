@@ -8,7 +8,10 @@ load_dotenv(override=True)
 
 
 def initialize_ollama_model(
-    output_type=str, model_name: str = "gpt-oss:20b", temperature: float = 0.7
+    system_prompt: str = "",
+    output_type=str,
+    model_name: str = "gpt-oss:20b",
+    temperature: float = 0.7,
 ) -> Agent:
     ollama_model = OpenAIModel(
         model_name=model_name,
@@ -16,6 +19,11 @@ def initialize_ollama_model(
     )
 
     model_settings = ModelSettings(temperature=temperature)
-    agent = Agent(ollama_model, output_type=output_type, model_settings=model_settings)
+    agent = Agent(
+        model=ollama_model,
+        system_prompt=system_prompt,
+        output_type=output_type,
+        model_settings=model_settings,
+    )
 
     return agent
