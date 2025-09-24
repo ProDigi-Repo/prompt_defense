@@ -1,11 +1,5 @@
 from prompt_defense.utils.init_gemini import init_gemini_agent
-from prompt_defense.attack_prompts.gemini_generated import (
-    role_playing_attack,
-    repetetion,
-    context_shifting,
-    direct_query,
-    persona,
-)
+from prompt_defense.attack_prompts.manually import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
 from loguru import logger
@@ -17,13 +11,7 @@ def main():
     """
     gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
 
-    prompts = [
-        role_playing_attack,
-        repetetion,
-        context_shifting,
-        direct_query,
-        persona,
-    ]
+    # prompts imported from manually.py
 
     results = []
     for prompt in prompts:

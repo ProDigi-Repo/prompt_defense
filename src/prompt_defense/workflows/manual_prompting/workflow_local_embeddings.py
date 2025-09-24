@@ -1,12 +1,6 @@
 from prompt_defense.utils.init_openai import initialize_ollama_model
 from prompt_defense.utils.calculate_similarity import calculate_similarity
-from prompt_defense.attack_prompts.gemini_generated import (
-    role_playing_attack,
-    repetetion,
-    context_shifting,
-    direct_query,
-    persona,
-)
+from prompt_defense.attack_prompts.manually import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.embedding import generate_local_embeddings
 from loguru import logger
@@ -15,8 +9,7 @@ from loguru import logger
 def main():
     gemini_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
 
-    # forward pass all of the prompts
-    prompts = [role_playing_attack, repetetion, context_shifting, direct_query, persona]
+    # forward pass all of the prompts (imported from manually.py)
 
     # first embedd the system prompt
     system_prompt_embeddings = generate_local_embeddings(SYSTEM_PROMPT)
