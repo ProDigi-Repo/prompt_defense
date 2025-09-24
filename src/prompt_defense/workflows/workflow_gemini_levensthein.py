@@ -4,6 +4,10 @@ from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
 from loguru import logger
 
+from prompt_defense.utils.generation import (
+    generate_response_with_retry,
+)
+
 
 def main():
     """Run prompts through the Gemini agent and rank responses by
@@ -15,7 +19,7 @@ def main():
 
     results = []
     for prompt in prompts:
-        response = gemini_agent.run_sync([prompt])
+        response = generate_response_with_retry(gemini_agent, prompt)
         resp_text = response.output if hasattr(response, "output") else str(response)
         results.append((prompt, resp_text))
 
