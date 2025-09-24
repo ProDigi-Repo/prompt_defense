@@ -8,6 +8,7 @@ from prompt_defense.utils.generation import (
     embeddings_with_retry,
 )
 from prompt_defense.utils.embedding import generate_embeddings_google
+from tqdm import tqdm
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
 
     # now forward pass all of the prompts and calculate similarity
     results = []
-    for prompt in prompts:
+    for prompt in tqdm(prompts):
         response = generate_response_with_retry(gemini_agent, prompt)
         response_embeddings = embeddings_with_retry(response.output)
 
