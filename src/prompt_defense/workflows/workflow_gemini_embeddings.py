@@ -8,6 +8,11 @@ from prompt_defense.utils.generation import (
     embeddings_with_retry,
 )
 from prompt_defense.utils.embedding import generate_embeddings_google
+from prompt_defense.utils.json_storage import (
+    save_workflow_results,
+    format_results_for_storage,
+    create_results_summary,
+)
 from tqdm import tqdm
 
 
@@ -48,6 +53,45 @@ def main():
         print(f"Response: {response}")
         print(f"Similarity to System Prompt: {similarity_matrix[0][i + 1]}")
         print("-" * 50)
+
+    # Save results to JSON
+    logger.info("Saving results to JSON...")
+
+    # Extract data for storage
+    prompts_list = [r[0] for r in results]
+    responses_list = [r[1] for r in results]
+
+    # Format results for storage
+    formatted_results = format_results_for_storage(
+        prompts=prompts_list,
+        responses=responses_list,
+        similarity_matrix=similarity_matrix.tolist()
+        if hasattr(similarity_matrix, "tolist")
+        else similarity_matrix,
+        system_prompt=SYSTEM_PROMPT,
+        additional_data={
+            "model_type": "gemini",
+            "embedding_model": "google_embeddings",
+            "total_prompts_processed": len(prompts),
+        },
+    )
+
+    # Save to JSON file
+    saved_path = save_workflow_results(
+        results_data=formatted_results, workflow_name="gemini_embeddings"
+    )
+
+    # Create and display summary
+    summary = create_results_summary(formatted_results)
+    print("\nResults Summary:")
+    print(f"- Total prompts: {summary['total_prompts']}")
+    print(f"- Has similarity scores: {summary['has_similarity_scores']}")
+    if "similarity_stats" in summary:
+        stats = summary["similarity_stats"]
+        print(f"- Similarity range: {stats['min']:.4f} - {stats['max']:.4f}")
+        print(f"- Mean similarity: {stats['mean']:.4f}")
+
+    logger.info(f"Results saved to: {saved_path}")
 
 
 if __name__ == "__main__":
