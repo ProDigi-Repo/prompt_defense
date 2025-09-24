@@ -8,7 +8,7 @@ from prompt_defense.attack_prompts.gemini_generated import (
     persona,
 )
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
-from prompt_defense.defenders.embedding import generate_embeddings_google
+from prompt_defense.utils.embedding import generate_embeddings_google
 from loguru import logger
 
 
@@ -19,7 +19,7 @@ def main():
     prompts = [role_playing_attack, repetetion, context_shifting, direct_query, persona]
 
     # first embedd the system prompt
-    system_prompt_embeddings = generate_embeddings_google(SYSTEM_PRiOMPT)
+    system_prompt_embeddings = generate_embeddings_google(SYSTEM_PROMPT)
 
     logger.info("System prompt embeddings generated.")
 

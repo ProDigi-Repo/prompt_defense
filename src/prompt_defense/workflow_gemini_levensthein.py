@@ -7,7 +7,7 @@ from prompt_defense.attack_prompts.gemini_generated import (
     persona,
 )
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
-from prompt_defense.defenders.levenstein import calculate_levensthein_distance
+from prompt_defense.utils.levenstein import calculate_levensthein_distance
 from loguru import logger
 
 
