@@ -3,6 +3,11 @@ from prompt_defense.utils.calculate_similarity import calculate_similarity
 from prompt_defense.attack_prompts.manually import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.embedding import generate_local_embeddings
+from prompt_defense.utils.json_storage import (
+    save_workflow_results,
+    format_results_for_storage,
+    create_results_summary,
+)
 from loguru import logger
 
 
@@ -28,20 +33,59 @@ def main():
 
     all_embeddings = [system_prompt_embeddings] + [r[2] for r in results]
     similarity_matrix = calculate_similarity(all_embeddings)
-    print("Similarity Matrix:")
-    print(similarity_matrix)
+    logger.info("Similarity Matrix:")
+    logger.info(similarity_matrix)
     logger.info("Similarity matrix calculated.")
 
-    # please sort the results by similarity to the system prompt and then print the pairs
+    # please sort the results by similarity to the system prompt and then logger.info the pairs
     sorted_results = sorted(
         results, key=lambda x: similarity_matrix[0][results.index(x) + 1], reverse=True
     )
     for i, (prompt, response, embeddings) in enumerate(sorted_results):
-        print(f"\nAttack Prompt {i + 1}:")
-        print(f"Prompt: {prompt}")
-        print(f"Response: {response}")
-        print(f"Similarity to System Prompt: {similarity_matrix[0][i + 1]}")
-        print("-" * 50)
+        logger.info(f"\nAttack Prompt {i + 1}:")
+        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Response: {response}")
+        logger.info(f"Similarity to System Prompt: {similarity_matrix[0][i + 1]}")
+        logger.info("-" * 50)
+
+    # Save results to JSON
+    logger.info("Saving results to JSON...")
+
+    # Extract data for storage
+    prompts_list = [r[0] for r in results]
+    responses_list = [r[1] for r in results]
+
+    # Format results for storage
+    formatted_results = format_results_for_storage(
+        prompts=prompts_list,
+        responses=responses_list,
+        similarity_matrix=similarity_matrix.tolist()
+        if hasattr(similarity_matrix, "tolist")
+        else similarity_matrix,
+        system_prompt=SYSTEM_PROMPT,
+        additional_data={
+            "model_type": "local_ollama",
+            "embedding_model": "local_embeddings",
+            "total_prompts_processed": len(prompts),
+        },
+    )
+
+    # Save to JSON file
+    saved_path = save_workflow_results(
+        results_data=formatted_results, workflow_name="local_embeddings"
+    )
+
+    # Create and display summary
+    summary = create_results_summary(formatted_results)
+    logger.info("\nResults Summary:")
+    logger.info(f"- Total prompts: {summary['total_prompts']}")
+    logger.info(f"- Has similarity scores: {summary['has_similarity_scores']}")
+    if "similarity_stats" in summary:
+        stats = summary["similarity_stats"]
+        logger.info(f"- Similarity range: {stats['min']:.4f} - {stats['max']:.4f}")
+        logger.info(f"- Mean similarity: {stats['mean']:.4f}")
+
+    logger.info(f"Results saved to: {saved_path}")
 
 
 if __name__ == "__main__":

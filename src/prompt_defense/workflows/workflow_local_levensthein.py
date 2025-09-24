@@ -2,6 +2,11 @@ from prompt_defense.utils.init_openai import initialize_ollama_model
 from prompt_defense.attack_prompts.manually import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
+from prompt_defense.utils.json_storage import (
+    save_workflow_results,
+    format_results_for_storage,
+    create_results_summary,
+)
 from loguru import logger
 
 
@@ -34,11 +39,60 @@ def main():
     scored_sorted = sorted(scored, key=lambda x: x[2], reverse=True)
 
     for i, (prompt, resp_text, score) in enumerate(scored_sorted, start=1):
-        print(f"\nAttack Prompt {i}:")
-        print(f"Prompt: {prompt}")
-        print(f"Response: {resp_text}")
-        print(f"Levenshtein Similarity to System Prompt: {score}")
-        print("-" * 50)
+        logger.info(f"\nAttack Prompt {i}:")
+        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Response: {resp_text}")
+        logger.info(f"Levenshtein Similarity to System Prompt: {score}")
+        logger.info("-" * 50)
+
+    # Save results to JSON
+    logger.info("Saving results to JSON...")
+
+    # Extract data for storage
+    prompts_list = [item[0] for item in scored_sorted]
+    responses_list = [item[1] for item in scored_sorted]
+
+    # Create a simple similarity matrix for Levenshtein scores
+    # Note: This is different from embedding similarity matrices
+    levenshtein_scores = [item[2] for item in scored_sorted]
+
+    # Format results for storage
+    formatted_results = format_results_for_storage(
+        prompts=prompts_list,
+        responses=responses_list,
+        system_prompt=SYSTEM_PROMPT,
+        additional_data={
+            "model_type": "local_ollama",
+            "similarity_method": "levenshtein_distance",
+            "total_prompts_processed": len(prompts),
+            "levenshtein_scores": levenshtein_scores,
+        },
+    )
+
+    # Manually add Levenshtein scores to each result
+    for i, score in enumerate(levenshtein_scores):
+        if i < len(formatted_results["results"]):
+            formatted_results["results"][i]["levenshtein_similarity"] = float(score)
+
+    # Save to JSON file
+    saved_path = save_workflow_results(
+        results_data=formatted_results, workflow_name="local_levenshtein"
+    )
+
+    # Create and display summary
+    summary = create_results_summary(formatted_results)
+    logger.info("\nResults Summary:")
+    logger.info(f"- Total prompts: {summary['total_prompts']}")
+    logger.info(f"- Has similarity scores: {summary['has_similarity_scores']}")
+    if levenshtein_scores:
+        logger.info(
+            f"- Levenshtein range: {min(levenshtein_scores):.4f} - {max(levenshtein_scores):.4f}"
+        )
+        logger.info(
+            f"- Mean Levenshtein: {sum(levenshtein_scores) / len(levenshtein_scores):.4f}"
+        )
+
+    logger.info(f"Results saved to: {saved_path}")
 
 
 if __name__ == "__main__":
