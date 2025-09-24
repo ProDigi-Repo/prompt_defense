@@ -9,6 +9,7 @@ from prompt_defense.utils.json_storage import (
     create_results_summary,
 )
 from loguru import logger
+from tqdm import tqdm
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
 
     # now forward pass all of the prompts and calculate similarity
     results = []
-    for prompt in prompts:
+    for prompt in tqdm(prompts):
         response = gemini_agent.run_sync([prompt])
         response_embeddings = generate_local_embeddings(response.output)
         results.append((prompt, response.output, response_embeddings))

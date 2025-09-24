@@ -8,6 +8,7 @@ from prompt_defense.utils.json_storage import (
     create_results_summary,
 )
 from loguru import logger
+from tqdm import tqdm
 
 from prompt_defense.utils.generation import (
     generate_response_with_retry,
@@ -23,7 +24,7 @@ def main():
     # prompts imported from manually.py
 
     results = []
-    for prompt in prompts:
+    for prompt in tqdm(prompts):
         response = generate_response_with_retry(gemini_agent, prompt)
         resp_text = response.output if hasattr(response, "output") else str(response)
         results.append((prompt, resp_text))
