@@ -1,5 +1,4 @@
 from prompt_defense.utils.init_gemini import init_gemini_agent
-from prompt_defense.utils.calculate_similarity import calculate_similarity
 from prompt_defense.attack_prompts.gemini_generated import (
     role_playing_attack,
     repetetion,
@@ -8,45 +7,49 @@ from prompt_defense.attack_prompts.gemini_generated import (
     persona,
 )
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
+from prompt_defense.defenders.levenstein import calculate_levensthein_distance
 from loguru import logger
 
 
 def main():
+    """Run prompts through the Gemini agent and rank responses by
+    Levenshtein similarity to the `SYSTEM_PROMPT`.
+    """
     gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
 
-    # forward pass all of the prompts
-    prompts = [role_playing_attack, repetetion, context_shifting, direct_query, persona]
+    prompts = [
+        role_playing_attack,
+        repetetion,
+        context_shifting,
+        direct_query,
+        persona,
+    ]
 
-    # first embedd the system prompt
-    system_prompt_embeddings = generate_embeddings_google(SYSTEM_PROMPT)
-
-    logger.info("System prompt embeddings generated.")
-
-    # now forward pass all of the prompts and calculate similarity
     results = []
     for prompt in prompts:
         response = gemini_agent.run_sync([prompt])
-        response_embeddings = generate_embeddings_google(response.output)
-        results.append((prompt, response.output, response_embeddings))
+        resp_text = response.output if hasattr(response, "output") else str(response)
+        results.append((prompt, resp_text))
 
-    logger.info("All prompts processed and embeddings generated.")
-    # calculate similarity
+    logger.info("All prompts processed.")
 
-    all_embeddings = [system_prompt_embeddings] + [r[2] for r in results]
-    similarity_matrix = calculate_similarity(all_embeddings)
-    print("Similarity Matrix:")
-    print(similarity_matrix)
-    logger.info("Similarity matrix calculated.")
+    # compute Levenshtein similarity (ratio) between system prompt and each response
+    scored = []
+    for prompt, resp_text in results:
+        try:
+            score = calculate_levensthein_distance(SYSTEM_PROMPT, resp_text)
+        except Exception:
+            score = 0.0
+        scored.append((prompt, resp_text, score))
 
-    # please sort the results by similarity to the system prompt and then print the pairs
-    sorted_results = sorted(
-        results, key=lambda x: similarity_matrix[0][results.index(x) + 1], reverse=True
-    )
-    for i, (prompt, response, embeddings) in enumerate(sorted_results):
-        print(f"\nAttack Prompt {i + 1}:")
+    # sort by score descending (higher ratio means more similar)
+    scored_sorted = sorted(scored, key=lambda x: x[2], reverse=True)
+
+    for i, (prompt, resp_text, score) in enumerate(scored_sorted, start=1):
+        print(f"\nAttack Prompt {i}:")
         print(f"Prompt: {prompt}")
-        print(f"Response: {response}")
-        print(f"Similarity to System Prompt: {similarity_matrix[0][i + 1]}")
+        print(f"Response: {resp_text}")
+        print(f"Levenshtein Similarity to System Prompt: {score}")
         print("-" * 50)
 
 
