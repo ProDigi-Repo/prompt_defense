@@ -5,19 +5,19 @@ Excel export utility for workflow results.
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from loguru import logger
 
 
 def export_results_to_excel(
-    prompts: List[str],
-    responses: List[str],
-    embedding_similarities: List[float],
-    levenshtein_similarities: List[float],
+    prompts: list[str],
+    responses: list[str],
+    embedding_similarities: list[float],
+    levenshtein_similarities: list[float],
     workflow_name: str,
     output_dir: str = "results",
-    system_prompt: Optional[str] = None,
-    additional_metadata: Optional[Dict[str, Any]] = None,
+    system_prompt: str | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> str:
     """
     Export combined workflow results to Excel format.
@@ -46,38 +46,55 @@ def export_results_to_excel(
 
     try:
         # Create main results DataFrame
-        results_df = pd.DataFrame({
-            'input': prompts,
-            'response': responses,
-            'similarity_embeddings': embedding_similarities,
-            'similarity_levenshtein': levenshtein_similarities
-        })
+        results_df = pd.DataFrame(
+            {
+                "input": prompts,
+                "response": responses,
+                "similarity_embeddings": embedding_similarities,
+                "similarity_levenshtein": levenshtein_similarities,
+            }
+        )
 
         # Sort by embedding similarity (primary) and Levenshtein similarity (secondary)
         results_df = results_df.sort_values(
-            by=['similarity_embeddings', 'similarity_levenshtein'], 
-            ascending=False
+            by=["similarity_embeddings", "similarity_levenshtein"], ascending=False
         )
 
         # Reset index after sorting
         results_df = results_df.reset_index(drop=True)
 
         # Create Excel writer object
-        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+        with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
             # Write main results to 'Results' sheet
-            results_df.to_excel(writer, sheet_name='Results', index=False)
+            results_df.to_excel(writer, sheet_name="Results", index=False)
 
             # Create metadata sheet if we have additional info
             metadata_dict = {
-                'Workflow Name': [workflow_name],
-                'Export Timestamp': [datetime.now().isoformat()],
-                'Total Prompts': [len(prompts)],
-                'Mean Embedding Similarity': [sum(embedding_similarities) / len(embedding_similarities) if embedding_similarities else 0],
-                'Mean Levenshtein Similarity': [sum(levenshtein_similarities) / len(levenshtein_similarities) if levenshtein_similarities else 0],
-                'Max Embedding Similarity': [max(embedding_similarities) if embedding_similarities else 0],
-                'Max Levenshtein Similarity': [max(levenshtein_similarities) if levenshtein_similarities else 0],
-                'Min Embedding Similarity': [min(embedding_similarities) if embedding_similarities else 0],
-                'Min Levenshtein Similarity': [min(levenshtein_similarities) if levenshtein_similarities else 0],
+                "Workflow Name": [workflow_name],
+                "Export Timestamp": [datetime.now().isoformat()],
+                "Total Prompts": [len(prompts)],
+                "Mean Embedding Similarity": [
+                    sum(embedding_similarities) / len(embedding_similarities)
+                    if embedding_similarities
+                    else 0
+                ],
+                "Mean Levenshtein Similarity": [
+                    sum(levenshtein_similarities) / len(levenshtein_similarities)
+                    if levenshtein_similarities
+                    else 0
+                ],
+                "Max Embedding Similarity": [
+                    max(embedding_similarities) if embedding_similarities else 0
+                ],
+                "Max Levenshtein Similarity": [
+                    max(levenshtein_similarities) if levenshtein_similarities else 0
+                ],
+                "Min Embedding Similarity": [
+                    min(embedding_similarities) if embedding_similarities else 0
+                ],
+                "Min Levenshtein Similarity": [
+                    min(levenshtein_similarities) if levenshtein_similarities else 0
+                ],
             }
 
             if additional_metadata:
@@ -85,19 +102,21 @@ def export_results_to_excel(
                     metadata_dict[key] = [value]
 
             metadata_df = pd.DataFrame(metadata_dict)
-            metadata_df.to_excel(writer, sheet_name='Metadata', index=False)
+            metadata_df.to_excel(writer, sheet_name="Metadata", index=False)
 
             # Add system prompt to separate sheet if provided
             if system_prompt:
-                system_df = pd.DataFrame({
-                    'System Prompt': [system_prompt]
-                })
-                system_df.to_excel(writer, sheet_name='System Prompt', index=False)
+                system_df = pd.DataFrame({"System Prompt": [system_prompt]})
+                system_df.to_excel(writer, sheet_name="System Prompt", index=False)
 
         logger.info(f"Results exported to Excel: {file_path}")
         logger.info(f"Total entries: {len(results_df)}")
-        logger.info(f"Mean embedding similarity: {sum(embedding_similarities) / len(embedding_similarities):.4f}")
-        logger.info(f"Mean Levenshtein similarity: {sum(levenshtein_similarities) / len(levenshtein_similarities):.4f}")
+        logger.info(
+            f"Mean embedding similarity: {sum(embedding_similarities) / len(embedding_similarities):.4f}"
+        )
+        logger.info(
+            f"Mean Levenshtein similarity: {sum(levenshtein_similarities) / len(levenshtein_similarities):.4f}"
+        )
 
         return str(file_path)
 
@@ -106,7 +125,7 @@ def export_results_to_excel(
         raise
 
 
-def load_excel_results(file_path: str) -> Dict[str, pd.DataFrame]:
+def load_excel_results(file_path: str) -> dict[str, pd.DataFrame]:
     """
     Load workflow results from Excel file.
 
