@@ -18,6 +18,10 @@ def export_results_to_excel(
     output_dir: str = "results",
     system_prompt: str | None = None,
     additional_metadata: dict[str, Any] | None = None,
+    bleu_scores: list[float] | None = None,
+    rouge1_scores: list[float] | None = None,
+    rouge2_scores: list[float] | None = None,
+    rougeL_scores: list[float] | None = None,
 ) -> str:
     """
     Export combined workflow results to Excel format.
@@ -31,6 +35,10 @@ def export_results_to_excel(
         output_dir: Directory to save Excel file (default: "results")
         system_prompt: Optional system prompt used
         additional_metadata: Optional additional metadata to include
+        bleu_scores: Optional list of BLEU scores
+        rouge1_scores: Optional list of ROUGE-1 scores
+        rouge2_scores: Optional list of ROUGE-2 scores
+        rougeL_scores: Optional list of ROUGE-L scores
 
     Returns:
         str: Path to the saved Excel file
@@ -46,19 +54,32 @@ def export_results_to_excel(
 
     try:
         # Create main results DataFrame
-        results_df = pd.DataFrame(
-            {
-                "input": prompts,
-                "response": responses,
-                "similarity_embeddings": embedding_similarities,
-                "similarity_levenshtein": levenshtein_similarities,
-            }
-        )
+        data_dict = {
+            "input": prompts,
+            "response": responses,
+            "similarity_embeddings": embedding_similarities,
+            "similarity_levenshtein": levenshtein_similarities,
+        }
+
+        # Add BLEU and ROUGE scores if provided
+        if bleu_scores is not None:
+            data_dict["similarity_bleu"] = bleu_scores
+        if rouge1_scores is not None:
+            data_dict["similarity_rouge1"] = rouge1_scores
+        if rouge2_scores is not None:
+            data_dict["similarity_rouge2"] = rouge2_scores
+        if rougeL_scores is not None:
+            data_dict["similarity_rougeL"] = rougeL_scores
+
+        results_df = pd.DataFrame(data_dict)
 
         # Sort by embedding similarity (primary) and Levenshtein similarity (secondary)
-        results_df = results_df.sort_values(
-            by=["similarity_embeddings", "similarity_levenshtein"], ascending=False
-        )
+        sort_columns = ["similarity_embeddings", "similarity_levenshtein"]
+        # Add BLEU to sorting if available
+        if bleu_scores is not None:
+            sort_columns.insert(1, "similarity_bleu")
+
+        results_df = results_df.sort_values(by=sort_columns, ascending=False)
 
         # Reset index after sorting
         results_df = results_df.reset_index(drop=True)
@@ -97,6 +118,66 @@ def export_results_to_excel(
                 ],
             }
 
+            # Add BLEU and ROUGE statistics if available
+            if bleu_scores is not None:
+                metadata_dict.update(
+                    {
+                        "Mean BLEU Score": [
+                            sum(bleu_scores) / len(bleu_scores) if bleu_scores else 0
+                        ],
+                        "Max BLEU Score": [max(bleu_scores) if bleu_scores else 0],
+                        "Min BLEU Score": [min(bleu_scores) if bleu_scores else 0],
+                    }
+                )
+            if rouge1_scores is not None:
+                metadata_dict.update(
+                    {
+                        "Mean ROUGE-1 Score": [
+                            sum(rouge1_scores) / len(rouge1_scores)
+                            if rouge1_scores
+                            else 0
+                        ],
+                        "Max ROUGE-1 Score": [
+                            max(rouge1_scores) if rouge1_scores else 0
+                        ],
+                        "Min ROUGE-1 Score": [
+                            min(rouge1_scores) if rouge1_scores else 0
+                        ],
+                    }
+                )
+            if rouge2_scores is not None:
+                metadata_dict.update(
+                    {
+                        "Mean ROUGE-2 Score": [
+                            sum(rouge2_scores) / len(rouge2_scores)
+                            if rouge2_scores
+                            else 0
+                        ],
+                        "Max ROUGE-2 Score": [
+                            max(rouge2_scores) if rouge2_scores else 0
+                        ],
+                        "Min ROUGE-2 Score": [
+                            min(rouge2_scores) if rouge2_scores else 0
+                        ],
+                    }
+                )
+            if rougeL_scores is not None:
+                metadata_dict.update(
+                    {
+                        "Mean ROUGE-L Score": [
+                            sum(rougeL_scores) / len(rougeL_scores)
+                            if rougeL_scores
+                            else 0
+                        ],
+                        "Max ROUGE-L Score": [
+                            max(rougeL_scores) if rougeL_scores else 0
+                        ],
+                        "Min ROUGE-L Score": [
+                            min(rougeL_scores) if rougeL_scores else 0
+                        ],
+                    }
+                )
+
             if additional_metadata:
                 for key, value in additional_metadata.items():
                     metadata_dict[key] = [value]
@@ -117,6 +198,22 @@ def export_results_to_excel(
         logger.info(
             f"Mean Levenshtein similarity: {sum(levenshtein_similarities) / len(levenshtein_similarities):.4f}"
         )
+
+        # Log BLEU and ROUGE scores if available
+        if bleu_scores is not None:
+            logger.info(f"Mean BLEU score: {sum(bleu_scores) / len(bleu_scores):.4f}")
+        if rouge1_scores is not None:
+            logger.info(
+                f"Mean ROUGE-1 score: {sum(rouge1_scores) / len(rouge1_scores):.4f}"
+            )
+        if rouge2_scores is not None:
+            logger.info(
+                f"Mean ROUGE-2 score: {sum(rouge2_scores) / len(rouge2_scores):.4f}"
+            )
+        if rougeL_scores is not None:
+            logger.info(
+                f"Mean ROUGE-L score: {sum(rougeL_scores) / len(rougeL_scores):.4f}"
+            )
 
         return str(file_path)
 
