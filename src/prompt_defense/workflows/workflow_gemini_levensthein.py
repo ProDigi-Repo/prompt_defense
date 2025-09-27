@@ -15,11 +15,14 @@ from prompt_defense.utils.generation import (
 )
 
 
-def main():
+def main(agent=None):
     """Run prompts through the Gemini agent and rank responses by
     Levenshtein similarity to the `SYSTEM_PROMPT`.
     """
-    gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
+    if agent is None:
+        gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
+    else:
+        gemini_agent = agent
 
     # prompts imported from manually.py
 
