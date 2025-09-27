@@ -12,8 +12,11 @@ from loguru import logger
 from tqdm import tqdm
 
 
-def main():
-    gemini_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+def main(agent=None):
+    if agent is None:
+        local_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+    else:
+        local_agent = agent
 
     # forward pass all of the prompts (imported from manually.py)
 
@@ -25,7 +28,7 @@ def main():
     # now forward pass all of the prompts and calculate similarity
     results = []
     for prompt in tqdm(prompts):
-        response = gemini_agent.run_sync([prompt])
+        response = local_agent.run_sync([prompt])
         response_embeddings = generate_local_embeddings(response.output)
         results.append((prompt, response.output, response_embeddings))
 

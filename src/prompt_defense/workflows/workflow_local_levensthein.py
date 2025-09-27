@@ -11,17 +11,20 @@ from loguru import logger
 from tqdm import tqdm
 
 
-def main():
-    """Run prompts through the Gemini agent and rank responses by
+def main(agent=None):
+    """Run prompts through the local agent and rank responses by
     Levenshtein similarity to the `SYSTEM_PROMPT`.
     """
-    gemini_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+    if agent is None:
+        local_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+    else:
+        local_agent = agent
 
     # prompts imported from manually.py
 
     results = []
     for prompt in tqdm(prompts):
-        response = gemini_agent.run_sync([prompt])
+        response = local_agent.run_sync([prompt])
         resp_text = response.output if hasattr(response, "output") else str(response)
         results.append((prompt, resp_text))
 

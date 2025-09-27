@@ -16,8 +16,11 @@ from prompt_defense.utils.json_storage import (
 from tqdm import tqdm
 
 
-def main():
-    gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
+def main(agent=None):
+    if agent is None:
+        gemini_agent = init_gemini_agent(system_prompt=SYSTEM_PROMPT)
+    else:
+        gemini_agent = agent
 
     # forward pass all of the prompts (imported from manually.py)
 
