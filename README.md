@@ -17,8 +17,17 @@
 * [About](#about)
 * [Getting Started](#getting_started)
 * [Notes](#notes)
-* 
+
+  
 ## 🧐 About <a name = "about"></a>
+
+
+## 🚀 Experiment Set-Up <a name = "setup"></a>
+## Adversarial Prompts <a name = "setup1.1"></a>
+Prompt injections targeting the retrieval of the system prompt are in the theft_prompts.py
+Normal chat interaction prompts are in the chat_prompts.py
+
+## Metrics <a name = "setup1.2"></a>
 
 ## Sources
 
