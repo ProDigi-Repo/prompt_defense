@@ -4,7 +4,7 @@ Combined Local/Ollama workflow that calculates both embedding and Levenshtein si
 
 from prompt_defense.utils.init_openai import initialize_ollama_model
 from prompt_defense.utils.calculate_similarity import calculate_similarity
-from prompt_defense.attack_prompts.generated import prompts
+from prompt_defense.attack_prompts.theft_prompts import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.embedding import generate_local_embeddings
 from prompt_defense.utils.levenstein import calculate_levensthein_distance

@@ -4,7 +4,7 @@ Combined Gemini workflow that calculates both embedding and Levenshtein similari
 
 from prompt_defense.utils.init_gemini import init_gemini_agent
 from prompt_defense.utils.calculate_similarity import calculate_similarity
-from prompt_defense.attack_prompts.manually import prompts
+from prompt_defense.attack_prompts.theft_prompts import prompts
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 from prompt_defense.utils.generation import (
     generate_response_with_retry,
