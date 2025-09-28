@@ -3,9 +3,9 @@
 CLI interface for running prompt defense workflows with different models and metrics.
 
 Usage examples:
-    python run_workflow.py --model google/gemini-2.0-flash --metric embeddings
-    python run_workflow.py --model ollama/llama3.1 --metric levenstein
-    python run_workflow.py --model openrouter/gpt-4 --metric embeddings --embedding-model google/gemini-embedding-001
+    python run_workflow.py --model google/gemini-2.0-flash
+    python run_workflow.py --model ollama/llama3.1
+    python run_workflow.py --model openrouter/x-ai/grok-4-fast:free --embedding-model google/gemini-embedding-001
 """
 
 import argparse
@@ -19,6 +19,40 @@ from loguru import logger
 
 from prompt_defense.utils.model_handler import ModelHandler
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
+import re
+
+
+def discover_prompt_sources() -> List[str]:
+    """
+    Dynamically discover available prompt sources from the attack_prompts directory.
+
+    Returns:
+        List of available prompt source names (without .py extension)
+    """
+    # Get the path to the attack_prompts directory
+    attack_prompts_dir = Path(__file__).parent / "attack_prompts"
+
+    prompt_sources = []
+
+    # Find all .py files in the attack_prompts directory
+    for file_path in attack_prompts_dir.glob("*.py"):
+        # Skip __init__.py and any files starting with underscore
+        if file_path.name.startswith("_"):
+            continue
+
+        # Remove .py extension to get the module name
+        module_name = file_path.stem
+
+        # Try to import and check if it has a 'prompts' attribute
+        try:
+            module = importlib.import_module(f"prompt_defense.attack_prompts.{module_name}")
+            if hasattr(module, "prompts"):
+                prompt_sources.append(module_name)
+        except ImportError:
+            # Skip files that can't be imported
+            continue
+
+    return sorted(prompt_sources)
 
 
 def load_prompts(source: str) -> List[str]:
@@ -136,19 +170,41 @@ def restore_workflow_embedding_functions(workflow_module, original_funcs):
         setattr(workflow_module, func_name, original_func)
 
 
+def extract_model_name_for_filename(model_string: str) -> str:
+    """
+    Extract and sanitize model name from full model string for use in filenames.
+
+    Args:
+        model_string: Full model string like "openrouter/x-ai/grok-4-fast:free"
+
+    Returns:
+        Sanitized model name like "grok_4_fast_free"
+    """
+    # Extract everything after the last slash
+    model_name = model_string.split('/')[-1]
+
+    # Replace special characters (spaces, dashes, colons, dots) with underscores
+    sanitized_name = re.sub(r'[-:\s.]+', '_', model_name)
+
+    # Remove any trailing underscores
+    sanitized_name = sanitized_name.strip('_')
+
+    return sanitized_name
+
+
 def run_workflow(
     model_config,
-    metric: str,
     prompts_list: List[str],
+    prompt_source: str,
     temperature: float = 0.7
 ) -> str:
     """
-    Run the appropriate workflow using the model configuration.
+    Run the appropriate combined workflow using the model configuration.
 
     Args:
         model_config: ModelConfig with all model details
-        metric: Metric type (embeddings, levenstein)
         prompts_list: List of attack prompts
+        prompt_source: Name of the prompt source (for filename)
         temperature: Model temperature
 
     Returns:
@@ -156,51 +212,39 @@ def run_workflow(
     """
     # Determine which workflow module to import
     if model_config.provider == "google":
-        if metric == "embeddings":
-            workflow_name = "workflow_gemini_embeddings"
-        else:  # levenstein
-            workflow_name = "workflow_gemini_levensthein"
+        workflow_name = "workflow_gemini_combined"
     else:  # ollama or openrouter (both use local workflows)
-        if metric == "embeddings":
-            workflow_name = "workflow_local_embeddings"
-        else:  # levenstein
-            workflow_name = "workflow_local_levensthein"
+        workflow_name = "workflow_local_combined"
 
     logger.info(f"Running {workflow_name} with {model_config.provider} provider")
 
+    # Extract model name for filename
+    model_name_for_file = extract_model_name_for_filename(model_config.model_name)
+    logger.info(f"Using model name for output files: {model_name_for_file}")
+
     try:
         # Import the workflow module
-        workflow_module = importlib.import_module(f"prompt_defense.workflows.{workflow_name}")
+        workflow_module = importlib.import_module(f"prompt_defense.combined_workflows.{workflow_name}")
 
         # Create the agent
         agent = ModelHandler.create_agent(model_config, SYSTEM_PROMPT, temperature)
         logger.info(f"Initialized {model_config.provider} agent with model: {model_config.model_name}")
 
-        # For embedding workflows, also patch the embedding function
+        # For combined workflows, patch embedding function based on provider
         original_embedding_funcs = {}
-        if metric == "embeddings":
-            logger.info(f"Using embedding model: {model_config.embedding_model}")
-            embedding_func = ModelHandler.get_embedding_function(model_config)
-            original_embedding_funcs = patch_workflow_embedding_function(workflow_module, embedding_func)
+        logger.info(f"Using embedding model: {model_config.embedding_model}")
+        embedding_func = ModelHandler.get_embedding_function(model_config)
+        original_embedding_funcs = patch_workflow_embedding_function(workflow_module, embedding_func)
 
         # Replace prompts in the workflow module
         original_prompts = patch_workflow_prompts(workflow_module, prompts_list)
 
-        # Run the workflow with our agent
+        # Run the workflow with our agent, model name, and prompt source
         logger.info(f"Starting {workflow_name}...")
-        workflow_module.main(agent=agent)
+        result_path = workflow_module.main(agent=agent, model_name=model_name_for_file, prompt_source=prompt_source)
 
-        # The workflow saves results internally, so we need to determine the saved path
-        # This is a simplification - in reality we'd need to capture the return value
-        # from the workflow if it returns the path
-        results_dir = Path("results")
-        saved_files = list(results_dir.glob(f"*{workflow_name.split('_')[1]}*.json"))
-        if saved_files:
-            # Get the most recently created file
-            latest_file = max(saved_files, key=lambda p: p.stat().st_mtime)
-            return str(latest_file)
-        else:
-            return f"results/{workflow_name}_results.json"
+        # Return the result path from the workflow
+        return result_path
 
     except ImportError as e:
         raise ImportError(f"Could not import workflow '{workflow_name}': {e}")
@@ -222,10 +266,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --model google/gemini-2.0-flash --metric embeddings
-  %(prog)s --model ollama/llama3.1 --metric levenstein
-  %(prog)s --model openrouter/x-ai/grok-4-fast:free --metric embeddings
-  %(prog)s --model openrouter/gpt-4 --metric embeddings --embedding-model google/gemini-embedding-001
+  %(prog)s --model google/gemini-2.0-flash
+  %(prog)s --model ollama/llama3.1
+  %(prog)s --model openrouter/x-ai/grok-4-fast:free
+  %(prog)s --model openrouter/gpt-4 --embedding-model google/gemini-embedding-001
         """
     )
 
@@ -235,12 +279,6 @@ Examples:
         help="Model name with provider prefix (e.g., google/gemini-2.0-flash, ollama/llama3.1, openrouter/gpt-4)"
     )
 
-    parser.add_argument(
-        "--metric",
-        required=True,
-        choices=["embeddings", "levenstein"],
-        help="Similarity metric to use"
-    )
 
     parser.add_argument(
         "--embedding-model",
@@ -248,11 +286,15 @@ Examples:
              "Defaults to provider-specific models: google→gemini-embedding-001, ollama→embeddinggemma, openrouter→nomic-ai/nomic-embed-text-v1.5."
     )
 
+    # Discover available prompt sources dynamically
+    available_prompt_sources = discover_prompt_sources()
+    default_prompt_source = "generated" if "generated" in available_prompt_sources else available_prompt_sources[0]
+
     parser.add_argument(
         "--prompt-source",
-        default="generated",
-        choices=["generated", "selected", "manually", "gemini_generated"],
-        help="Attack prompt source to use (default: generated)"
+        default=default_prompt_source,
+        choices=available_prompt_sources,
+        help=f"Attack prompt source to use. Available: {', '.join(available_prompt_sources)} (default: {default_prompt_source})"
     )
 
     parser.add_argument(
@@ -289,8 +331,7 @@ Examples:
         )
 
         logger.info(f"Using provider: {model_config.provider}, model: {model_config.model_name}")
-        if args.metric == "embeddings":
-            logger.info(f"Using embedding model: {model_config.embedding_model}")
+        logger.info(f"Using embedding model: {model_config.embedding_model}")
 
         # Validate environment
         validate_environment(model_config.provider)
@@ -304,8 +345,8 @@ Examples:
         # Run the workflow
         saved_path = run_workflow(
             model_config=model_config,
-            metric=args.metric,
             prompts_list=prompts_list,
+            prompt_source=args.prompt_source,
             temperature=args.temperature
         )
 

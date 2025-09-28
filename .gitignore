@@ -140,4 +140,8 @@ phoenix_data/
 
 # AI stuff
 .claude/
+project/
 CLAUDE.md
+
+# experiment execution
+run_experiments.sh

@@ -10,11 +10,16 @@ from prompt_defense.utils.embedding import generate_local_embeddings
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
 from prompt_defense.utils.bleu_rouge import calculate_combined_bleu_rouge_scores
 from prompt_defense.utils.excel_export import export_results_to_excel
+from prompt_defense.utils.json_storage import (
+    save_workflow_results,
+    format_results_for_storage,
+    create_results_summary,
+)
 from loguru import logger
 from tqdm import tqdm
 
 
-def main():
+def main(agent=None, model_name=None, prompt_source=None):
     """
     Run prompts through Local/Ollama model and calculate both embedding and Levenshtein similarities.
     Export results to Excel with columns: input, response, similarity_embeddings, similarity_levenshtein.
@@ -22,7 +27,10 @@ def main():
     logger.info("Starting Local Combined Workflow...")
 
     # Initialize local Ollama model
-    local_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+    if agent is None:
+        local_agent = initialize_ollama_model(system_prompt=SYSTEM_PROMPT)
+    else:
+        local_agent = agent
 
     # Generate system prompt embeddings first
     logger.info("Generating system prompt embeddings...")
@@ -123,6 +131,14 @@ def main():
 
     # Export to Excel
     logger.info("Exporting results to Excel...")
+    # Create workflow name with model name and prompt source
+    name_parts = []
+    if model_name:
+        name_parts.append(model_name)
+    name_parts.append("combined")
+    if prompt_source:
+        name_parts.append(prompt_source)
+    workflow_name = "_".join(name_parts) if name_parts else "local_combined"
     excel_path = export_results_to_excel(
         prompts=prompts_list,
         responses=responses_list,
@@ -132,7 +148,7 @@ def main():
         rouge1_scores=rouge1_scores,
         rouge2_scores=rouge2_scores,
         rougeL_scores=rougeL_scores,
-        workflow_name="local_combined",
+        workflow_name=workflow_name,
         system_prompt=SYSTEM_PROMPT,
         additional_metadata={
             "model_type": "local_ollama",
@@ -146,6 +162,53 @@ def main():
             ],
         },
     )
+
+    # Export to JSON
+    logger.info("Exporting results to JSON...")
+
+    # Create similarity matrix for JSON export (embeddings only for compatibility)
+    similarity_matrix = calculate_similarity([system_prompt_embeddings] + [r[2] for r in results])
+
+    # Format results for JSON storage including all metrics
+    formatted_results = format_results_for_storage(
+        prompts=prompts_list,
+        responses=responses_list,
+        similarity_matrix=similarity_matrix.tolist() if hasattr(similarity_matrix, "tolist") else similarity_matrix,
+        system_prompt=SYSTEM_PROMPT,
+        additional_data={
+            "model_type": "local_ollama",
+            "embedding_model": "local_embeddings",
+            "total_prompts_processed": len(prompts),
+            "embedding_similarities": embedding_similarities,
+            "levenshtein_similarities": levenshtein_similarities,
+            "bleu_scores": bleu_scores,
+            "rouge1_scores": rouge1_scores,
+            "rouge2_scores": rouge2_scores,
+            "rougeL_scores": rougeL_scores,
+            "similarity_methods": [
+                "embedding_similarity",
+                "levenshtein_distance",
+                "bleu_score",
+                "rouge_scores",
+            ],
+        },
+    )
+
+    # Save to JSON file
+    json_path = save_workflow_results(
+        results_data=formatted_results,
+        workflow_name=workflow_name
+    )
+
+    # Create and display summary
+    summary = create_results_summary(formatted_results)
+    logger.info("JSON Results Summary:")
+    logger.info(f"- Total prompts: {summary['total_prompts']}")
+    logger.info(f"- Has similarity scores: {summary['has_similarity_scores']}")
+    if "similarity_stats" in summary:
+        stats = summary["similarity_stats"]
+        logger.info(f"- Similarity range: {stats['min']:.4f} - {stats['max']:.4f}")
+        logger.info(f"- Mean similarity: {stats['mean']:.4f}")
 
     logger.info("=== TOP 5 RESULTS BY EMBEDDING SIMILARITY ===")
     # Create combined data for sorting
@@ -187,6 +250,7 @@ def main():
 
     logger.info("\n✅ Local Combined Workflow completed successfully!")
     logger.info(f"📊 Results exported to: {excel_path}")
+    logger.info(f"📄 JSON data saved to: {json_path}")
 
     return excel_path
 
