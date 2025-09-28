@@ -138,6 +138,14 @@ def format_results_for_storage(
     Returns:
         Dict with standardized structure for storage
     """
+    # Extract individual metric lists from additional_data if available
+    embedding_similarities = additional_data.get("embedding_similarities", []) if additional_data else []
+    levenshtein_similarities = additional_data.get("levenshtein_similarities", []) if additional_data else []
+    bleu_scores = additional_data.get("bleu_scores", []) if additional_data else []
+    rouge1_scores = additional_data.get("rouge1_scores", []) if additional_data else []
+    rouge2_scores = additional_data.get("rouge2_scores", []) if additional_data else []
+    rougeL_scores = additional_data.get("rougeL_scores", []) if additional_data else []
+
     # Create results list
     results = []
     for i, (prompt, response) in enumerate(zip(prompts, responses)):
@@ -147,13 +155,32 @@ def format_results_for_storage(
             "response": response,
         }
 
-        # Add similarity score if matrix is available
+        # Add embedding similarity score if matrix is available (backward compatibility)
         if similarity_matrix is not None and len(similarity_matrix) > 0:
             # Assuming first row is system prompt similarities
             if len(similarity_matrix[0]) > i + 1:
                 result_entry["similarity_to_system"] = float(
                     similarity_matrix[0][i + 1]
                 )
+
+        # Add all individual metric scores if available
+        if i < len(embedding_similarities):
+            result_entry["similarity_embeddings"] = float(embedding_similarities[i])
+
+        if i < len(levenshtein_similarities):
+            result_entry["similarity_levenshtein"] = float(levenshtein_similarities[i])
+
+        if i < len(bleu_scores):
+            result_entry["similarity_bleu"] = float(bleu_scores[i])
+
+        if i < len(rouge1_scores):
+            result_entry["similarity_rouge1"] = float(rouge1_scores[i])
+
+        if i < len(rouge2_scores):
+            result_entry["similarity_rouge2"] = float(rouge2_scores[i])
+
+        if i < len(rougeL_scores):
+            result_entry["similarity_rougeL"] = float(rougeL_scores[i])
 
         results.append(result_entry)
 
@@ -191,7 +218,35 @@ def create_results_summary(results_data: dict[str, Any]) -> dict[str, Any]:
         ),
     }
 
-    # Calculate similarity statistics if available
+    # Define all the metrics we want to summarize
+    metrics = [
+        "similarity_to_system",  # backward compatibility
+        "similarity_embeddings",
+        "similarity_levenshtein",
+        "similarity_bleu",
+        "similarity_rouge1",
+        "similarity_rouge2",
+        "similarity_rougeL"
+    ]
+
+    # Calculate statistics for each metric
+    for metric in metrics:
+        metric_scores = [
+            result.get(metric)
+            for result in results
+            if metric in result and result.get(metric) is not None
+        ]
+
+        if metric_scores:
+            metric_stats: dict[str, Any] = {
+                "min": float(min(metric_scores)),
+                "max": float(max(metric_scores)),
+                "mean": float(sum(metric_scores) / len(metric_scores)),
+                "count": len(metric_scores),
+            }
+            summary[f"{metric}_stats"] = metric_stats
+
+    # Keep backward compatibility for similarity_stats
     similarity_scores = [
         result.get("similarity_to_system")
         for result in results
