@@ -11,6 +11,6 @@ MODELS=(
 
 for MODEL in "${MODELS[@]}"; do
     echo "Running experiments for model: $MODEL"
-    (cd ../ && uv run python src/prompt_defense/run_workflow.py --model openrouter/$MODEL --prompt-source theft_prompts --verbose)
-    (cd ../ && uv run python src/prompt_defense/run_workflow.py --model openrouter/$MODEL --prompt-source chat_prompts --verbose)
+    (cd ../ && uv run python src/prompt_defense/run_workflow.py --model openrouter/$MODEL --prompt-source theft_prompts --temperature 0.0 --verbose)
+    (cd ../ && uv run python src/prompt_defense/run_workflow.py --model openrouter/$MODEL --prompt-source chat_prompts --temperature 0.0 --verbose)
 done
