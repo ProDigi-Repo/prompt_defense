@@ -11,11 +11,11 @@ class BaseGuard:
         """
         pass
 
-    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float]:
+    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float, str]:
         """
         Uses an ML model to detect jailbreaking / prompt injections. Models
         that output just decisions fill the bool value whereas models that
         return probabilities (check with `has_probs`) fill the float value
-        as well.
+        as well. Returns the raw output as well.
         """
         pass

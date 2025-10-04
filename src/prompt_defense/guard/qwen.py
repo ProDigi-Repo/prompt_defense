@@ -34,7 +34,7 @@ class QwenGuard(BaseGuard):
     def has_probs(self) -> bool:
         return False
 
-    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float]:
+    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float, str]:
 
         messages = [
             {"role": "user", "content": prompt}
@@ -55,4 +55,4 @@ class QwenGuard(BaseGuard):
         content = self._tokenizer.decode(output_ids, skip_special_tokens=True)
         safe_label, categories = self.extract_label_and_categories(content)
         
-        return [safe_label == "Unsafe", None]
+        return [safe_label in ["Unsafe", "Controversial"], None, content]

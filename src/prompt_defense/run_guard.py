@@ -5,15 +5,15 @@ CLI interface for running {Qwen, Llama}-Guard
 
 import argparse
 import sys
-import tqdm
 import json
-import datetime
+from datetime import datetime
 
 from loguru import logger
+from tqdm import tqdm
 
-from .guard.llama import LlamaGuard
-from .guard.qwen import QwenGuard
-from .attack_prompts.theft_prompts import prompts
+from prompt_defense.guard.llama import LlamaGuard
+from prompt_defense.guard.qwen import QwenGuard
+from prompt_defense.attack_prompts.theft_prompts import prompts
 
 def main():
     parser = argparse.ArgumentParser(
@@ -29,7 +29,7 @@ Examples:
     parser.add_argument(
         "--model",
         required=True,
-        choices=["llama", "qwen"]
+        choices=["llama", "qwen"],
         help="The guard model class to use."
     )
 
@@ -54,15 +54,16 @@ Examples:
     elif args.model == "llama":
         guard = LlamaGuard()
 
-    results = {}
+    results = []
 
     for prompt in tqdm(prompts, desc="Processing prompts"):
-        decision, prob = guard.detect_jailbreak(prompt)
+        decision, prob, content = guard.detect_jailbreak(prompt)
         results.append([
             {
                 "prompt": prompt,
                 "malicions": decision,
-                "prob": prob
+                "prob": prob,
+                "content" : content
             }
         ])
 
@@ -74,7 +75,7 @@ Examples:
             "model": args.model,
             "has_probs": guard.has_probs(),
             "results": results
-        }))
+        }, indent=2))
 
     logger.info("Done!")
 

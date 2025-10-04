@@ -223,7 +223,7 @@ class LlamaGuard(BaseGuard):
     def __init__(self):
         super().__init__()
 
-        self._model, self._tokenizer = load_model_and_tokenizer(
+        self._model, self._tokenizer, self._device = load_model_and_tokenizer(
             DEFAULT_MODEL_NAME,
             DEFAULT_DEVICE
         )
@@ -231,11 +231,11 @@ class LlamaGuard(BaseGuard):
     def has_probs(self) -> bool:
         return True
 
-    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float]:
+    def detect_jailbreak(self, prompt: str) -> Tuple[bool, float, str]:
         scores = get_jailbreak_scores_for_texts(
             self._model,
             self._tokenizer,
             [prompt]
         )
 
-        return [scores[0] > 0.5, scores[0]]
+        return [scores[0] > 0.5, scores[0], ""]
