@@ -21,6 +21,7 @@ from prompt_defense.utils.json_storage import (
 )
 from loguru import logger
 from tqdm import tqdm
+import time
 
 
 def main(agent=None, model_name=None, prompt_source=None):
@@ -72,15 +73,39 @@ def main(agent=None, model_name=None, prompt_source=None):
     # Calculate Levenshtein similarities
     logger.info("Calculating Levenshtein similarities...")
     levenshtein_similarities = []
+    levenshtein_times = []
     for _, response_text, _ in results:
         try:
+            start_time = time.perf_counter()
             levenshtein_score = calculate_levensthein_distance(
                 SYSTEM_PROMPT, response_text
             )
+            end_time = time.perf_counter()
+            calc_time = end_time - start_time
+
             levenshtein_similarities.append(float(levenshtein_score))
+            levenshtein_times.append(calc_time)
         except Exception as e:
             logger.warning(f"Error calculating Levenshtein distance: {e}")
             levenshtein_similarities.append(0.0)
+            levenshtein_times.append(0.0)
+
+    # Calculate and report Levenshtein timing statistics
+    if levenshtein_times:
+        total_time = sum(levenshtein_times)
+        avg_time = total_time / len(levenshtein_times)
+        min_time = min(levenshtein_times)
+        max_time = max(levenshtein_times)
+
+        logger.info("=== LEVENSHTEIN CALCULATION TIMING ===")
+        logger.info(f"Total prompts: {len(levenshtein_times)}")
+        logger.info(f"Total time: {total_time:.6f} seconds")
+        logger.info(
+            f"Mean time per prompt: {avg_time:.6f} seconds ({avg_time * 1000:.3f} ms)"
+        )
+        logger.info(f"Min time: {min_time:.6f} seconds ({min_time * 1000:.3f} ms)")
+        logger.info(f"Max time: {max_time:.6f} seconds ({max_time * 1000:.3f} ms)")
+        logger.info("=" * 40)
 
     # Calculate BLEU and ROUGE scores
     logger.info("Calculating BLEU and ROUGE scores...")
@@ -148,6 +173,7 @@ def main(agent=None, model_name=None, prompt_source=None):
         responses=responses_list,
         embedding_similarities=embedding_similarities,
         levenshtein_similarities=levenshtein_similarities,
+        levenshtein_times=levenshtein_times,
         bleu_scores=bleu_scores,
         rouge1_scores=rouge1_scores,
         rouge2_scores=rouge2_scores,
@@ -171,13 +197,17 @@ def main(agent=None, model_name=None, prompt_source=None):
     logger.info("Exporting results to JSON...")
 
     # Create similarity matrix for JSON export (embeddings only for compatibility)
-    similarity_matrix = calculate_similarity([system_prompt_embeddings] + [r[2] for r in results])
+    similarity_matrix = calculate_similarity(
+        [system_prompt_embeddings] + [r[2] for r in results]
+    )
 
     # Format results for JSON storage including all metrics
     formatted_results = format_results_for_storage(
         prompts=prompts_list,
         responses=responses_list,
-        similarity_matrix=similarity_matrix.tolist() if hasattr(similarity_matrix, "tolist") else similarity_matrix,
+        similarity_matrix=similarity_matrix.tolist()
+        if hasattr(similarity_matrix, "tolist")
+        else similarity_matrix,
         system_prompt=SYSTEM_PROMPT,
         additional_data={
             "model_type": "gemini",
@@ -200,8 +230,7 @@ def main(agent=None, model_name=None, prompt_source=None):
 
     # Save to JSON file
     json_path = save_workflow_results(
-        results_data=formatted_results,
-        workflow_name=workflow_name
+        results_data=formatted_results, workflow_name=workflow_name
     )
 
     # Create and display summary

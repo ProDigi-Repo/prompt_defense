@@ -22,6 +22,7 @@ def export_results_to_excel(
     rouge1_scores: list[float] | None = None,
     rouge2_scores: list[float] | None = None,
     rougeL_scores: list[float] | None = None,
+    levenshtein_times: list[float] | None = None,
 ) -> str:
     """
     Export combined workflow results to Excel format.
@@ -39,6 +40,7 @@ def export_results_to_excel(
         rouge1_scores: Optional list of ROUGE-1 scores
         rouge2_scores: Optional list of ROUGE-2 scores
         rougeL_scores: Optional list of ROUGE-L scores
+        levenshtein_times: Optional list of Levenshtein calculation times in seconds
 
     Returns:
         str: Path to the saved Excel file
@@ -70,6 +72,8 @@ def export_results_to_excel(
             data_dict["similarity_rouge2"] = rouge2_scores
         if rougeL_scores is not None:
             data_dict["similarity_rougeL"] = rougeL_scores
+        if levenshtein_times is not None:
+            data_dict["levenshtein_time_ms"] = [t * 1000 for t in levenshtein_times]
 
         results_df = pd.DataFrame(data_dict)
 
@@ -175,6 +179,22 @@ def export_results_to_excel(
                         "Min ROUGE-L Score": [
                             min(rougeL_scores) if rougeL_scores else 0
                         ],
+                    }
+                )
+
+            # Add Levenshtein timing statistics if available
+            if levenshtein_times is not None:
+                total_levenshtein_time = sum(levenshtein_times)
+                mean_levenshtein_time = total_levenshtein_time / len(levenshtein_times)
+                metadata_dict.update(
+                    {
+                        "Total Levenshtein Time (s)": [total_levenshtein_time],
+                        "Mean Levenshtein Time (s)": [mean_levenshtein_time],
+                        "Mean Levenshtein Time (ms)": [mean_levenshtein_time * 1000],
+                        "Min Levenshtein Time (s)": [min(levenshtein_times)],
+                        "Min Levenshtein Time (ms)": [min(levenshtein_times) * 1000],
+                        "Max Levenshtein Time (s)": [max(levenshtein_times)],
+                        "Max Levenshtein Time (ms)": [max(levenshtein_times) * 1000],
                     }
                 )
 

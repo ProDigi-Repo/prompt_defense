@@ -13,16 +13,18 @@ import os
 import sys
 import importlib
 from pathlib import Path
-from typing import List
 
 from loguru import logger
 
 from prompt_defense.utils.model_handler import ModelHandler
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
 import re
+import nltk
+
+nltk.download("punkt_tab")
 
 
-def discover_prompt_sources() -> List[str]:
+def discover_prompt_sources() -> list[str]:
     """
     Dynamically discover available prompt sources from the attack_prompts directory.
 
@@ -45,7 +47,9 @@ def discover_prompt_sources() -> List[str]:
 
         # Try to import and check if it has a 'prompts' attribute
         try:
-            module = importlib.import_module(f"prompt_defense.attack_prompts.{module_name}")
+            module = importlib.import_module(
+                f"prompt_defense.attack_prompts.{module_name}"
+            )
             if hasattr(module, "prompts"):
                 prompt_sources.append(module_name)
         except ImportError:
@@ -55,7 +59,7 @@ def discover_prompt_sources() -> List[str]:
     return sorted(prompt_sources)
 
 
-def load_prompts(source: str) -> List[str]:
+def load_prompts(source: str) -> list[str]:
     """
     Dynamically load prompts from specified source.
 
@@ -77,7 +81,9 @@ def load_prompts(source: str) -> List[str]:
     except ImportError as e:
         raise ImportError(f"Could not import prompt source '{source}': {e}")
     except AttributeError as e:
-        raise AttributeError(f"Prompt source '{source}' does not have 'prompts' attribute: {e}")
+        raise AttributeError(
+            f"Prompt source '{source}' does not have 'prompts' attribute: {e}"
+        )
 
 
 def validate_environment(provider: str) -> None:
@@ -93,15 +99,17 @@ def validate_environment(provider: str) -> None:
     required_vars = {
         "google": ["GEMINI_API_KEY"],
         "ollama": [],  # Local model, no API key required
-        "openrouter": ["OPENROUTER_API_KEY"]
+        "openrouter": ["OPENROUTER_API_KEY"],
     }
 
     for var in required_vars.get(provider, []):
         if not os.getenv(var):
-            raise EnvironmentError(f"Required environment variable {var} is not set for provider '{provider}'")
+            raise OSError(
+                f"Required environment variable {var} is not set for provider '{provider}'"
+            )
 
 
-def patch_workflow_prompts(workflow_module, prompts_list: List[str]):
+def patch_workflow_prompts(workflow_module, prompts_list: list[str]):
     """
     Replace the prompts in the workflow module with our custom prompts.
 
@@ -112,7 +120,7 @@ def patch_workflow_prompts(workflow_module, prompts_list: List[str]):
     Returns:
         Original prompts for restoration
     """
-    original_prompts = getattr(workflow_module, 'prompts', None)
+    original_prompts = getattr(workflow_module, "prompts", None)
     workflow_module.prompts = prompts_list
     return original_prompts
 
@@ -143,16 +151,20 @@ def patch_workflow_embedding_function(workflow_module, embedding_func):
     original_funcs = {}
 
     # Store and replace embedding functions based on workflow type
-    if hasattr(workflow_module, 'generate_local_embeddings'):
-        original_funcs['generate_local_embeddings'] = workflow_module.generate_local_embeddings
+    if hasattr(workflow_module, "generate_local_embeddings"):
+        original_funcs["generate_local_embeddings"] = (
+            workflow_module.generate_local_embeddings
+        )
         workflow_module.generate_local_embeddings = embedding_func
 
-    if hasattr(workflow_module, 'generate_embeddings_google'):
-        original_funcs['generate_embeddings_google'] = workflow_module.generate_embeddings_google
+    if hasattr(workflow_module, "generate_embeddings_google"):
+        original_funcs["generate_embeddings_google"] = (
+            workflow_module.generate_embeddings_google
+        )
         workflow_module.generate_embeddings_google = embedding_func
 
-    if hasattr(workflow_module, 'embeddings_with_retry'):
-        original_funcs['embeddings_with_retry'] = workflow_module.embeddings_with_retry
+    if hasattr(workflow_module, "embeddings_with_retry"):
+        original_funcs["embeddings_with_retry"] = workflow_module.embeddings_with_retry
         workflow_module.embeddings_with_retry = embedding_func
 
     return original_funcs
@@ -181,22 +193,19 @@ def extract_model_name_for_filename(model_string: str) -> str:
         Sanitized model name like "grok_4_fast_free"
     """
     # Extract everything after the last slash
-    model_name = model_string.split('/')[-1]
+    model_name = model_string.split("/")[-1]
 
     # Replace special characters (spaces, dashes, colons, dots) with underscores
-    sanitized_name = re.sub(r'[-:\s.]+', '_', model_name)
+    sanitized_name = re.sub(r"[-:\s.]+", "_", model_name)
 
     # Remove any trailing underscores
-    sanitized_name = sanitized_name.strip('_')
+    sanitized_name = sanitized_name.strip("_")
 
     return sanitized_name
 
 
 def run_workflow(
-    model_config,
-    prompts_list: List[str],
-    prompt_source: str,
-    temperature: float = 0.7
+    model_config, prompts_list: list[str], prompt_source: str, temperature: float = 0.7
 ) -> str:
     """
     Run the appropriate combined workflow using the model configuration.
@@ -224,24 +233,32 @@ def run_workflow(
 
     try:
         # Import the workflow module
-        workflow_module = importlib.import_module(f"prompt_defense.combined_workflows.{workflow_name}")
+        workflow_module = importlib.import_module(
+            f"prompt_defense.combined_workflows.{workflow_name}"
+        )
 
         # Create the agent
         agent = ModelHandler.create_agent(model_config, SYSTEM_PROMPT, temperature)
-        logger.info(f"Initialized {model_config.provider} agent with model: {model_config.model_name}")
+        logger.info(
+            f"Initialized {model_config.provider} agent with model: {model_config.model_name}"
+        )
 
         # For combined workflows, patch embedding function based on provider
         original_embedding_funcs = {}
         logger.info(f"Using embedding model: {model_config.embedding_model}")
         embedding_func = ModelHandler.get_embedding_function(model_config)
-        original_embedding_funcs = patch_workflow_embedding_function(workflow_module, embedding_func)
+        original_embedding_funcs = patch_workflow_embedding_function(
+            workflow_module, embedding_func
+        )
 
         # Replace prompts in the workflow module
         original_prompts = patch_workflow_prompts(workflow_module, prompts_list)
 
         # Run the workflow with our agent, model name, and prompt source
         logger.info(f"Starting {workflow_name}...")
-        result_path = workflow_module.main(agent=agent, model_name=model_name_for_file, prompt_source=prompt_source)
+        result_path = workflow_module.main(
+            agent=agent, model_name=model_name_for_file, prompt_source=prompt_source
+        )
 
         # Return the result path from the workflow
         return result_path
@@ -252,11 +269,13 @@ def run_workflow(
         raise Exception(f"Error running workflow '{workflow_name}': {e}")
     finally:
         # Restore the original module state
-        if 'workflow_module' in locals():
-            if 'original_prompts' in locals():
+        if "workflow_module" in locals():
+            if "original_prompts" in locals():
                 restore_workflow_prompts(workflow_module, original_prompts)
-            if 'original_embedding_funcs' in locals():
-                restore_workflow_embedding_functions(workflow_module, original_embedding_funcs)
+            if "original_embedding_funcs" in locals():
+                restore_workflow_embedding_functions(
+                    workflow_module, original_embedding_funcs
+                )
 
 
 def main():
@@ -270,51 +289,50 @@ Examples:
   %(prog)s --model ollama/llama3.1
   %(prog)s --model openrouter/x-ai/grok-4-fast:free
   %(prog)s --model openrouter/gpt-4 --embedding-model google/gemini-embedding-001
-        """
+        """,
     )
 
     parser.add_argument(
         "--model",
         required=True,
-        help="Model name with provider prefix (e.g., google/gemini-2.0-flash, ollama/llama3.1, openrouter/gpt-4)"
+        help="Model name with provider prefix (e.g., google/gemini-2.0-flash, ollama/llama3.1, openrouter/gpt-4)",
     )
-
 
     parser.add_argument(
         "--embedding-model",
         help="Embedding model to use (e.g., google/gemini-embedding-001, ollama/embeddinggemma, nomic-ai/nomic-embed-text-v1.5). "
-             "Defaults to provider-specific models: google→gemini-embedding-001, ollama→embeddinggemma, openrouter→nomic-ai/nomic-embed-text-v1.5."
+        "Defaults to provider-specific models: google→gemini-embedding-001, ollama→embeddinggemma, openrouter→nomic-ai/nomic-embed-text-v1.5.",
     )
 
     # Discover available prompt sources dynamically
     available_prompt_sources = discover_prompt_sources()
-    default_prompt_source = "generated" if "generated" in available_prompt_sources else available_prompt_sources[0]
+    default_prompt_source = (
+        "generated"
+        if "generated" in available_prompt_sources
+        else available_prompt_sources[0]
+    )
 
     parser.add_argument(
         "--prompt-source",
         default=default_prompt_source,
         choices=available_prompt_sources,
-        help=f"Attack prompt source to use. Available: {', '.join(available_prompt_sources)} (default: {default_prompt_source})"
+        help=f"Attack prompt source to use. Available: {', '.join(available_prompt_sources)} (default: {default_prompt_source})",
     )
 
     parser.add_argument(
         "--temperature",
         type=float,
         default=0.7,
-        help="Model temperature (default: 0.7)"
+        help="Model temperature (default: 0.7)",
     )
 
     parser.add_argument(
         "--output-dir",
         default="results",
-        help="Output directory for results (default: results)"
+        help="Output directory for results (default: results)",
     )
 
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -326,11 +344,12 @@ Examples:
     try:
         # Create model configuration
         model_config = ModelHandler.create_model_config(
-            model_string=args.model,
-            embedding_model=args.embedding_model
+            model_string=args.model, embedding_model=args.embedding_model
         )
 
-        logger.info(f"Using provider: {model_config.provider}, model: {model_config.model_name}")
+        logger.info(
+            f"Using provider: {model_config.provider}, model: {model_config.model_name}"
+        )
         logger.info(f"Using embedding model: {model_config.embedding_model}")
 
         # Validate environment
@@ -347,12 +366,14 @@ Examples:
             model_config=model_config,
             prompts_list=prompts_list,
             prompt_source=args.prompt_source,
-            temperature=args.temperature
+            temperature=args.temperature,
         )
 
-        logger.success(f"Workflow completed successfully. Results saved to: {saved_path}")
+        logger.success(
+            f"Workflow completed successfully. Results saved to: {saved_path}"
+        )
 
-    except (ValueError, ImportError, AttributeError, EnvironmentError) as e:
+    except (ValueError, ImportError, AttributeError, OSError) as e:
         logger.error(f"Configuration error: {e}")
         sys.exit(1)
     except KeyboardInterrupt:

@@ -16,8 +16,8 @@ def initialize_openai_compatible_model(
     output_type=str,
     model_name: str = "",
     temperature: float = 0.7,
-    provider: Provider = None) -> Agent:
-
+    provider: Provider = None,
+) -> Agent:
     model = OpenAIChatModel(
         model_name=model_name,
         provider=provider,
@@ -29,33 +29,33 @@ def initialize_openai_compatible_model(
         system_prompt=system_prompt,
         output_type=output_type,
         model_settings=model_settings,
+        retries=15,
     )
 
     return agent
 
-    
 
 def initialize_ollama_model(
     system_prompt: str = "",
     output_type=str,
     model_name: str = "gpt-oss:20b",
-    temperature: float = 0.7
+    temperature: float = 0.7,
 ) -> Agent:
-    
     return initialize_openai_compatible_model(
         system_prompt,
         output_type,
         model_name,
         temperature,
-        OllamaProvider(base_url="http://localhost:11434/v1"))
+        OllamaProvider(base_url="http://localhost:11434/v1"),
+    )
+
 
 def initialize_openrouter_model(
     system_prompt: str = "",
     output_type=str,
     model_name: str = "openai/gpt-oss:20b",
-    temperature: float = 0.7
+    temperature: float = 0.7,
 ) -> Agent:
-
     return initialize_openai_compatible_model(
         system_prompt,
         output_type,
@@ -63,6 +63,6 @@ def initialize_openrouter_model(
         temperature,
         OpenAIProvider(
             base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY", "")
-        )
+            api_key=os.getenv("OPENROUTER_API_KEY", ""),
+        ),
     )
