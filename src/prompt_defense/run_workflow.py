@@ -212,6 +212,8 @@ def run_workflow(
     enable_judge: bool = False,
     judge_model: str | None = None,
     judge_reasoning_effort: str | None = None,
+    enable_parallel: bool = False,
+    workers: int = 4,
 ) -> str:
     """
     Run the appropriate combined workflow using the model configuration.
@@ -224,6 +226,8 @@ def run_workflow(
         enable_judge: Enable LLM judge for prompt leak detection
         judge_model: Judge model to use
         judge_reasoning_effort: Judge reasoning effort level
+        enable_parallel: Enable parallel processing for model responses
+        workers: Number of parallel workers
 
     Returns:
         Path to saved results file
@@ -272,6 +276,8 @@ def run_workflow(
             enable_judge=enable_judge,
             judge_model=judge_model,
             judge_reasoning_effort=judge_reasoning_effort,
+            enable_parallel=enable_parallel,
+            workers=workers,
         )
 
         # Return the result path from the workflow
@@ -367,6 +373,19 @@ Examples:
         help="Judge reasoning effort level (default: medium)",
     )
 
+    parser.add_argument(
+        "--enable-parallel",
+        action="store_true",
+        help="Enable parallel processing for model responses (faster for large prompt lists)",
+    )
+
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of parallel workers for model responses (default: 4)",
+    )
+
     args = parser.parse_args()
 
     # Configure logging
@@ -403,6 +422,8 @@ Examples:
             enable_judge=args.enable_judge,
             judge_model=args.judge_model,
             judge_reasoning_effort=args.judge_reasoning_effort,
+            enable_parallel=args.enable_parallel,
+            workers=args.workers,
         )
 
         logger.success(

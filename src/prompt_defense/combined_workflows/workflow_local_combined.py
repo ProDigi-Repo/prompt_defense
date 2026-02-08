@@ -20,6 +20,40 @@ from prompt_defense.utils.judge import calculate_judge_stats
 from loguru import logger
 from tqdm import tqdm
 import time
+import concurrent.futures
+
+
+def _process_single_prompt(
+    agent, prompt: str, embedding_func
+) -> tuple[str, str, list[float]]:
+    """
+    Process a single prompt: generate response and embeddings.
+
+    Args:
+        agent: Model agent for generating responses
+        prompt: Attack prompt to process
+        embedding_func: Function to generate embeddings
+
+    Returns:
+        Tuple of (prompt, response_text, response_embeddings)
+        If processing fails, returns (prompt, "model did not answer", zero_embeddings)
+    """
+    try:
+        response = agent.run_sync([prompt])
+        response_text = (
+            response.output if hasattr(response, "output") else str(response)
+        )
+
+        if not response_text or response_text.strip() == "":
+            logger.warning(f"Empty response for prompt: {prompt[:50]}...")
+            return (prompt, "model did not answer", [0.0] * 768)
+
+        response_embeddings = embedding_func(response_text)
+        return (prompt, response_text, response_embeddings)
+
+    except Exception as e:
+        logger.warning(f"Error processing prompt '{prompt[:50]}...': {e}")
+        return (prompt, "model did not answer", [0.0] * 768)
 
 
 def main(
@@ -29,12 +63,29 @@ def main(
     enable_judge=False,
     judge_model="openrouter/openai/gpt-oss-safeguard-20b",
     judge_reasoning_effort="medium",
+    enable_parallel=False,
+    workers=4,
 ):
     """
     Run prompts through Local/Ollama model and calculate both embedding and Levenshtein similarities.
     Export results to Excel with columns: input, response, similarity_embeddings, similarity_levenshtein.
+
+    Args:
+        agent: Model agent for generating responses
+        model_name: Model name for output files
+        prompt_source: Name of the prompt source (for filename)
+        enable_judge: Enable LLM judge for prompt leak detection
+        judge_model: Judge model to use
+        judge_reasoning_effort: Judge reasoning effort level
+        enable_parallel: Enable parallel processing for model responses
+        workers: Number of parallel workers
     """
     logger.info("Starting Local Combined Workflow...")
+
+    if enable_parallel and workers > 10:
+        logger.warning(
+            f"Using {workers} parallel workers. This may exceed API rate limits."
+        )
 
     # Initialize local Ollama model
     if agent is None:
@@ -50,17 +101,40 @@ def main(
     logger.info("Processing attack prompts...")
     results: list[tuple[str, str, list[float]]] = []
 
-    for prompt in tqdm(prompts, desc="Processing prompts"):
-        # Generate response using local model
-        response = local_agent.run_sync([prompt])
-        response_text = (
-            response.output if hasattr(response, "output") else str(response)
-        )
+    if enable_parallel and workers > 1:
+        logger.info(f"Using parallel processing with {workers} workers")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_prompt = {
+                executor.submit(
+                    _process_single_prompt,
+                    local_agent,
+                    prompt,
+                    generate_local_embeddings,
+                ): i
+                for i, prompt in enumerate(prompts)
+            }
 
-        # Generate embeddings for the response
-        response_embeddings = generate_local_embeddings(response_text)
+            results_with_index = []
+            for future in tqdm(
+                concurrent.futures.as_completed(future_to_prompt),
+                total=len(prompts),
+                desc="Processing prompts",
+            ):
+                try:
+                    result = future.result()
+                    idx = future_to_prompt[future]
+                    results_with_index.append((idx, result))
+                except Exception as e:
+                    logger.error(f"Future failed: {e}")
 
-        results.append((prompt, response_text, response_embeddings))
+            results_with_index.sort(key=lambda x: x[0])
+            results = [r[1] for r in results_with_index]
+    else:
+        for prompt in tqdm(prompts, desc="Processing prompts"):
+            result = _process_single_prompt(
+                local_agent, prompt, generate_local_embeddings
+            )
+            results.append(result)
 
     logger.info("All prompts processed and embeddings generated.")
 
