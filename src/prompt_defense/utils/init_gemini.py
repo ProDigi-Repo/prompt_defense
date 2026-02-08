@@ -17,12 +17,14 @@ def init_gemini_agent(
     thinking_budget: int = 200,
     temperature: float = 1,
     model_name: str = "gemini-2.5-flash",
+    max_tokens: int | None = None,
 ):
     provider = GoogleProvider(api_key=os.getenv("GEMINI_API_KEY"))
 
     settings = GoogleModelSettings(
         temperature=temperature,
         google_thinking_config={"thinking_budget": thinking_budget},
+        max_tokens=max_tokens,
         # google_safety_settings=[
         #     {
         #         'category': HarmCategory.HARM_CATEGORY_HATE_SPEECH,

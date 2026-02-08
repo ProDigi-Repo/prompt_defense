@@ -3,8 +3,8 @@
 CLI interface for running multi-turn prompt theft conversations between attacker and victim models.
 
 Usage examples:
-    python run_multiturn.py --attacker ollama/llama3.1 --victim openrouter/gpt-4 results/session.json
-    python run_multiturn.py --attacker google/gemini-2.0-flash --victim ollama/llama3.1 --p-attack 0.7 results/session.json
+    python run_multiturn.py --attacker ollama/llama3.1 --victim openrouter/gpt-4
+    python run_multiturn.py --attacker google/gemini-2.0-flash --victim ollama/llama3.1 --p-attack 0.7
 """
 
 import argparse
@@ -17,8 +17,6 @@ from dotenv import load_dotenv
 from prompt_defense.multiturn.multiturn_theft import Session
 from prompt_defense.utils.model_handler import ModelHandler
 from prompt_defense.system_prompts.basic import SYSTEM_PROMPT
-from prompt_defense.attack_prompts import theft_prompts, chat_prompts
-from prompt_defense.attack_prompts import paraphrased_theft_prompts
 
 
 def main():
@@ -37,16 +35,16 @@ def main():
         "--victim", required=True, help="Victim model (e.g., openrouter/gpt-4)"
     )
     parser.add_argument(
-        "--attacker-embedding-model", help="Attacker embedding model (optional)"
-    )
-    parser.add_argument(
-        "--victim-embedding-model", help="Victim embedding model (optional)"
-    )
-    parser.add_argument(
         "--p-attack",
         type=float,
         default=0.5,
         help="Attack probability [0,1] (default: 0.5)",
+    )
+    parser.add_argument(
+        "--embedding",
+        type=str,
+        default="culip/qwen-embedding-0.6b-2",
+        help="Maximum conversation turns (default: 10)",
     )
     parser.add_argument(
         "--max-turns",
@@ -59,13 +57,6 @@ def main():
         action="store_true",
         help="Exclude refusals from exports/history",
     )
-    parser.add_argument(
-        "--paraphrase", action="store_true", help="Use paraphrased attack prompts"
-    )
-    parser.add_argument(
-        "--output", default="results", help="Output directory (default: results)"
-    )
-    parser.add_argument("output_file", help="Output JSON filename")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
@@ -80,34 +71,40 @@ def main():
 
     try:
         attacker_config = ModelHandler.create_model_config(
-            args.attacker, embedding_model=args.attacker_embedding_model
+            args.attacker, embedding_model=args.embedding
         )
         victim_config = ModelHandler.create_model_config(
-            args.victim, embedding_model=args.victim_embedding_model
+            args.victim, embedding_model=args.embedding
         )
-
-        if args.paraphrase:
-            attack_prompts = paraphrased_theft_prompts.prompts
-        else:
-            attack_prompts = theft_prompts.prompts
-
-        chat_prompts_list = chat_prompts.prompts
 
         session = Session(
             attacker_model_config=attacker_config,
             victim_model_config=victim_config,
-            attacker_prompts=attack_prompts,
-            chat_prompts=chat_prompts_list,
             p_attack=args.p_attack,
             max_turns=args.max_turns,
             delete_rejections=args.delete_rejections,
-            paraphrase=args.paraphrase,
             victim_system_prompt=SYSTEM_PROMPT,
         )
 
         session.run()
 
-        output_path = Path(args.output) / args.output_file
+        results_dir = Path("results")
+        results_dir.mkdir(parents=True, exist_ok=True)
+
+        existing_files = list(results_dir.glob("multiturn_*.json"))
+        existing_numbers = []
+        for f in existing_files:
+            try:
+                num = int(f.stem.split("_")[1])
+                existing_numbers.append(num)
+            except (ValueError, IndexError):
+                pass
+
+        next_num = 1
+        while next_num in existing_numbers:
+            next_num += 1
+
+        output_path = results_dir / f"multiturn_{next_num:02d}.json"
         session.export_results(str(output_path))
         logger.success(f"Results exported to {output_path}")
 

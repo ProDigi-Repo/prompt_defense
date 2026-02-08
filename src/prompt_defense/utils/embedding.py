@@ -25,7 +25,22 @@ def generate_local_embeddings(text: str, model: str = "embeddinggemma") -> list:
     return list(embeddings.embeddings[0])
 
 
-def generate_sentence_transformer_embeddings(text: str, model_name: str = "nomic-ai/nomic-embed-text-v1.5") -> list:
+def generate_openai_embeddings(
+    text: str,
+    model: str = "text-embedding-3-small",
+    base_url: str = "",
+    api_key: str = "",
+) -> list:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    response = client.embeddings.create(model=model, input=text)
+    return response.data[0].embedding
+
+
+def generate_sentence_transformer_embeddings(
+    text: str, model_name: str = "nomic-ai/nomic-embed-text-v1.5"
+) -> list:
     """
     Generate embeddings using SentenceTransformer models.
 
@@ -47,9 +62,16 @@ def generate_sentence_transformer_embeddings(text: str, model_name: str = "nomic
         )
 
     # Lazy load the model (cache it globally)
-    if _sentence_transformer_model is None or _sentence_transformer_model.model_name != model_name:
-        _sentence_transformer_model = SentenceTransformer(model_name, trust_remote_code=True)
-        _sentence_transformer_model.model_name = model_name  # Store model name for cache checking
+    if (
+        _sentence_transformer_model is None
+        or _sentence_transformer_model.model_name != model_name
+    ):
+        _sentence_transformer_model = SentenceTransformer(
+            model_name, trust_remote_code=True
+        )
+        _sentence_transformer_model.model_name = (
+            model_name  # Store model name for cache checking
+        )
 
     # Generate embeddings
     embeddings = _sentence_transformer_model.encode([text])

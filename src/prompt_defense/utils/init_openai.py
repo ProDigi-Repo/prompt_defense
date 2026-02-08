@@ -17,13 +17,18 @@ def initialize_openai_compatible_model(
     model_name: str = "",
     temperature: float = 0.7,
     provider: Provider = None,
+    max_tokens: int | None = None,
 ) -> Agent:
     model = OpenAIChatModel(
         model_name=model_name,
         provider=provider,
     )
 
-    model_settings = ModelSettings(temperature=temperature)
+    model_settings = (
+        ModelSettings(temperature=temperature, max_tokens=max_tokens)
+        if max_tokens
+        else ModelSettings(temperature=temperature)
+    )
     agent = Agent(
         model=model,
         system_prompt=system_prompt,
@@ -40,6 +45,7 @@ def initialize_ollama_model(
     output_type=str,
     model_name: str = "gpt-oss:20b",
     temperature: float = 0.7,
+    max_tokens: int | None = None,
 ) -> Agent:
     return initialize_openai_compatible_model(
         system_prompt,
@@ -47,6 +53,7 @@ def initialize_ollama_model(
         model_name,
         temperature,
         OllamaProvider(base_url="http://localhost:11434/v1"),
+        max_tokens,
     )
 
 
@@ -55,6 +62,7 @@ def initialize_openrouter_model(
     output_type=str,
     model_name: str = "openai/gpt-oss:20b",
     temperature: float = 0.7,
+    max_tokens: int | None = None,
 ) -> Agent:
     return initialize_openai_compatible_model(
         system_prompt,
@@ -65,6 +73,7 @@ def initialize_openrouter_model(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY", ""),
         ),
+        max_tokens,
     )
 
 
@@ -73,6 +82,7 @@ def initialize_culip_model(
     output_type=str,
     model_name: str = "qwen3-coder-next",
     temperature: float = 0.7,
+    max_tokens: int | None = None,
 ) -> Agent:
     return initialize_openai_compatible_model(
         system_prompt,
@@ -83,4 +93,5 @@ def initialize_culip_model(
             base_url="http://shell1struta.tail823923.ts.net:5000/v1",
             api_key=os.getenv("CULIP_AI_API_KEY", ""),
         ),
+        max_tokens,
     )

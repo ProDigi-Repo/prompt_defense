@@ -7,7 +7,7 @@ from typing import Any
 from loguru import logger
 from tqdm import tqdm
 
-from prompt_defense.utils.model_handler import ModelHandler
+from prompt_defense.utils.model_handler import ModelHandler, ModelConfig
 from prompt_defense.utils.judge import load_judge_policy, parse_judge_response
 
 
@@ -16,9 +16,10 @@ class PromptLeakJudge:
 
     def __init__(
         self,
-        model: str = "openrouter/openai/gpt-oss-safeguard-20b",
+        model: ModelConfig | str = "openrouter/openai/gpt-oss-safeguard-20b",
         reasoning_effort: str = "medium",
         max_retries: int = 5,
+        embedding_model: str | None = None,
     ):
         """
         Initialize the judge with a model and configuration.
@@ -27,6 +28,7 @@ class PromptLeakJudge:
             model: Model identifier (e.g., "openrouter/openai/gpt-oss-safeguard-20b")
             reasoning_effort: Reasoning effort level ("low", "medium", "high")
             max_retries: Maximum number of retry attempts for API failures
+            embedding_model: Optional embedding model to use
         """
         self.model_name = model
         self.reasoning_effort = reasoning_effort
@@ -38,7 +40,12 @@ class PromptLeakJudge:
 
         # Create model configuration
         try:
-            self.model_config = ModelHandler.create_model_config(model_string=model)
+            if isinstance(model, ModelConfig):
+                self.model_config = model
+            else:
+                self.model_config = ModelHandler.create_model_config(
+                    model_string=model, embedding_model=embedding_model
+                )
             self.policy = load_judge_policy()
 
             # Prepend reasoning effort instruction to policy
