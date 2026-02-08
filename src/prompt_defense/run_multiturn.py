@@ -41,6 +41,12 @@ def main():
         help="Attack probability [0,1] (default: 0.5)",
     )
     parser.add_argument(
+        "--victim-temperature",
+        type=float,
+        default=0.7,
+        help="Victim model temperature (default: 0.7)",
+    )
+    parser.add_argument(
         "--embedding",
         type=str,
         default="culip/qwen-embedding-0.6b-2",
@@ -84,6 +90,7 @@ def main():
             max_turns=args.max_turns,
             delete_rejections=args.delete_rejections,
             victim_system_prompt=SYSTEM_PROMPT,
+            victim_temperature=args.victim_temperature,
         )
 
         session.run()

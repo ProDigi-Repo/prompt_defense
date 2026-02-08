@@ -51,7 +51,6 @@ class BotRole(ABC):
         pass
 
 
-
 class Attacker(BotRole):
     """Attacker role that selects prompts from attack/chat sets."""
 
@@ -146,12 +145,16 @@ class Session:
         delete_rejections: bool = False,
         victim_system_prompt: str = "",
         embedding_model: str = None,
+        victim_temperature: float = 0.7,
     ):
         attacker_agent = ModelHandler.create_agent(
             attacker_model_config, ATTACKER_SYSTEM_PROMPT, 0.7, max_tokens=2048
         )
         victim_agent = ModelHandler.create_agent(
-            victim_model_config, victim_system_prompt, 0.7, max_tokens=2048
+            victim_model_config,
+            victim_system_prompt,
+            victim_temperature,
+            max_tokens=2048,
         )
 
         self.attacker_model_config = attacker_model_config
