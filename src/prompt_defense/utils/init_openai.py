@@ -66,3 +66,21 @@ def initialize_openrouter_model(
             api_key=os.getenv("OPENROUTER_API_KEY", ""),
         ),
     )
+
+
+def initialize_culip_model(
+    system_prompt: str = "",
+    output_type=str,
+    model_name: str = "qwen3-coder-next",
+    temperature: float = 0.7,
+) -> Agent:
+    return initialize_openai_compatible_model(
+        system_prompt,
+        output_type,
+        model_name,
+        temperature,
+        OpenAIProvider(
+            base_url="http://shell1struta.tail823923.ts.net:5000/v1",
+            api_key=os.getenv("CULIP_AI_API_KEY", ""),
+        ),
+    )
