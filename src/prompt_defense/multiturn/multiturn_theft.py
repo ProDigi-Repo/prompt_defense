@@ -10,6 +10,8 @@ from typing import Any
 import random
 import uuid
 import time
+import json
+from pathlib import Path
 
 from loguru import logger
 from tqdm import tqdm
@@ -18,6 +20,7 @@ from prompt_defense.judge.prompt_leak_judge import PromptLeakJudge
 from prompt_defense.utils.model_handler import ModelHandler, ModelConfig
 from prompt_defense.utils.embedding import generate_local_embeddings
 from prompt_defense.utils.levenstein import calculate_levensthein_distance
+from prompt_defense.utils.json_storage import NumpyEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
@@ -138,6 +141,8 @@ class Session:
             victim_model_config, victim_system_prompt, 0.7
         )
 
+        self.attacker_model_config = attacker_model_config
+        self.victim_model_config = victim_model_config
         self.attacker = Attacker(
             agent=attacker_agent,
             system_prompt="You are a helpful assistant.",
@@ -270,3 +275,89 @@ class Session:
                     continue
 
         return self.turns
+
+    def export_results(self, output_path: str) -> None:
+        active_turns = [t for t in self.turns if t.included]
+
+        active_conversation = []
+        for turn in active_turns:
+            active_conversation.append(
+                {"role": "user", "content": turn.attacker_message}
+            )
+            active_conversation.append(
+                {"role": "assistant", "content": turn.victim_message}
+            )
+
+        turns_data = [
+            {
+                "turn_number": turn.turn_number,
+                "attacker_message": turn.attacker_message,
+                "victim_message": turn.victim_message,
+                "was_attack": turn.was_attack,
+                "judge_result": turn.judge_result,
+                "scores": turn.scores,
+                "included": turn.included,
+            }
+            for turn in self.turns
+        ]
+
+        summary = {
+            "total_turns": len(self.turns),
+            "active_turns": len(active_turns),
+            "attack_turns": len([t for t in self.turns if t.was_attack]),
+            "leaked_turns": len(
+                [
+                    t
+                    for t in self.turns
+                    if t.judge_result and t.judge_result.get("leaked") is True
+                ]
+            ),
+            "refused_turns": len(
+                [
+                    t
+                    for t in self.turns
+                    if t.judge_result and t.judge_result.get("leaked") is False
+                ]
+            ),
+            "deleted_turns": len([t for t in self.turns if not t.included]),
+            "avg_cosine_similarity": (
+                sum(
+                    [
+                        t.scores.get("cosine_similarity", 0)
+                        for t in self.turns
+                        if t.scores
+                    ]
+                )
+                / len([t for t in self.turns if t.scores])
+                if any(t.scores for t in self.turns)
+                else 0
+            ),
+            "avg_levenshtein": (
+                sum([t.scores.get("levenshtein", 0) for t in self.turns if t.scores])
+                / len([t for t in self.turns if t.scores])
+                if any(t.scores for t in self.turns)
+                else 0
+            ),
+        }
+
+        output = {
+            "session_id": self.session_id,
+            "config": {
+                "attacker_model": str(self.attacker_model_config),
+                "victim_model": str(self.victim_model_config),
+                "p_attack": self.p_attack,
+                "max_turns": self.max_turns,
+                "delete_rejections": self.delete_rejections,
+                "paraphrase": self.paraphrase,
+            },
+            "active_conversation": active_conversation,
+            "turns": turns_data,
+            "summary": summary,
+        }
+
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, "w") as f:
+            json.dump(output, f, indent=2, cls=NumpyEncoder)
+
+        logger.success(f"Results exported to {output_path}")
