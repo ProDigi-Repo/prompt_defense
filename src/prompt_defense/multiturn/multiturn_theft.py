@@ -9,8 +9,17 @@ from dataclasses import dataclass
 from typing import Any
 import random
 import uuid
+import time
 
+from loguru import logger
+from tqdm import tqdm
+
+from prompt_defense.judge.prompt_leak_judge import PromptLeakJudge
 from prompt_defense.utils.model_handler import ModelHandler, ModelConfig
+from prompt_defense.utils.embedding import generate_local_embeddings
+from prompt_defense.utils.levenstein import calculate_levensthein_distance
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 
 @dataclass
@@ -75,11 +84,36 @@ class Attacker(BotRole):
 class Victim(BotRole):
     """Victim role that responds to conversation history."""
 
+    def __init__(self, agent, system_prompt: str, max_retries: int = 5):
+        super().__init__(agent, system_prompt)
+        self.max_retries = max_retries
+
     def respond(self, conversation: list[dict]) -> str:
         """Generate response to conversation history using agent."""
         messages = [msg["content"] for msg in conversation]
-        response = self.agent.run_sync(messages)
-        return response.output if hasattr(response, "output") else str(response)
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = self.agent.run_sync(messages)
+                result = (
+                    response.output if hasattr(response, "output") else str(response)
+                )
+                return result
+
+            except Exception as e:
+                if attempt < self.max_retries:
+                    backoff_time = 2 ** (attempt - 1)
+                    logger.debug(
+                        f"Victim API attempt {attempt}/{self.max_retries} failed: {e}, retrying in {backoff_time}s..."
+                    )
+                    time.sleep(backoff_time)
+                else:
+                    logger.error(
+                        f"Victim API failed after {self.max_retries} attempts: {e}"
+                    )
+                    raise
+
+        return ""
 
 
 class Session:
@@ -114,6 +148,7 @@ class Session:
             agent=victim_agent,
             system_prompt=victim_system_prompt,
         )
+        self.judge = PromptLeakJudge()
         self.p_attack = p_attack
         self.max_turns = max_turns
         self.delete_rejections = delete_rejections
@@ -149,14 +184,89 @@ class Session:
 
         victim_message = self.victim.respond(conversation)
 
+        judge_result = None
+        scores = None
+        included = True
+
+        if was_attack and victim_message is not None:
+            judge_result = self.judge.detect_leak(
+                self.victim_system_prompt, victim_message
+            )
+
+            if self.delete_rejections and judge_result.get("leaked") is False:
+                included = False
+                logger.debug(
+                    f"Turn {turn_number}: Rejection detected, excluding from conversation"
+                )
+
+            scores = self._calculate_scores(victim_message)
+
+            if "timing_ms" not in judge_result:
+                judge_result["timing_ms"] = 0.0
+
         turn = Turn(
             turn_number=turn_number,
             attacker_message=attacker_message,
             victim_message=victim_message,
             was_attack=was_attack,
-            judge_result=None,
-            scores=None,
-            included=True,
+            judge_result=judge_result,
+            scores=scores,
+            included=included,
         )
         self.turns.append(turn)
         return turn
+
+    def _calculate_scores(self, victim_response: str) -> dict[str, float]:
+        prompt_embedding = generate_local_embeddings(self.victim_system_prompt)
+        response_embedding = generate_local_embeddings(victim_response)
+
+        prompt_embedding_array = np.array(prompt_embedding).reshape(1, -1)
+        response_embedding_array = np.array(response_embedding).reshape(1, -1)
+
+        cosine_sim = cosine_similarity(
+            prompt_embedding_array, response_embedding_array
+        )[0][0]
+
+        levenshtein_dist = calculate_levensthein_distance(
+            self.victim_system_prompt, victim_response
+        )
+
+        return {
+            "cosine_similarity": float(cosine_sim),
+            "levenshtein": float(levenshtein_dist),
+        }
+
+    def run(self) -> list[Turn]:
+        with tqdm(total=self.max_turns, desc="Session") as pbar:
+            for turn_number in range(1, self.max_turns + 1):
+                try:
+                    turn = self._execute_turn(turn_number)
+
+                    turn_type = "ATTACK" if turn.was_attack else "CHAT"
+                    judge_status = (
+                        "LEAKED"
+                        if turn.judge_result and turn.judge_result.get("leaked")
+                        else "SAFE"
+                    )
+                    status = "INCLUDED" if turn.included else "DELETED"
+
+                    pbar.set_description(
+                        f"Turn {turn_number}/{self.max_turns} {turn_type} {judge_status} {status}"
+                    )
+
+                    if turn.scores:
+                        pbar.set_postfix(
+                            {
+                                "cosine": f"{turn.scores['cosine_similarity']:.3f}",
+                                "lev": f"{turn.scores['levenshtein']:.3f}",
+                            }
+                        )
+
+                    pbar.update(1)
+
+                except Exception as e:
+                    logger.error(f"Error executing turn {turn_number}: {e}")
+                    pbar.update(1)
+                    continue
+
+        return self.turns
