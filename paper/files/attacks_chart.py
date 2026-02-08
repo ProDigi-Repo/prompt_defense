@@ -109,16 +109,16 @@ def create_bar_plot(ax, group_names, start_idx, end_idx):
         label="Unsuccessful attacks",
     )
 
-    # Add white text labels on each segment (showing proportions)
+    # Add white text labels on each segment (showing absolute numbers)
     for i, (pos, succ, unsucc) in enumerate(
         zip(positions, successful_normalized, unsuccessful_normalized)
     ):
         # Label for successful attacks (bottom, black section)
-        if succ > 0.05:
+        if successful_subset[i] > 0:
             ax.text(
                 pos,
                 succ / 2,
-                f"{succ:.2f}",
+                f"{int(successful_subset[i])}",
                 ha="center",
                 va="center",
                 color="white",
@@ -127,11 +127,11 @@ def create_bar_plot(ax, group_names, start_idx, end_idx):
             )
 
         # Label for unsuccessful attacks (top, gray section)
-        if unsucc > 0.05:
+        if unsuccessful_subset[i] > 0:
             ax.text(
                 pos,
                 succ + unsucc / 2,
-                f"{unsucc:.2f}",
+                f"{int(unsuccessful_subset[i])}",
                 ha="center",
                 va="center",
                 color="white",
