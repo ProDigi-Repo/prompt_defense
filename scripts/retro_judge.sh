@@ -48,15 +48,11 @@ fi
 
 # Process temp directories
 echo "=== Processing results/temp_0_0 ==="
-(cd /home/mfm/code/prompt_defense && $CMD --directory results/temp_0_0)
+( $CMD --directory results/temp_0_0)
 
 echo ""
 echo "=== Processing results/temp_0_7 ==="
-(cd /home/mfm/code/prompt_defense && $CMD --directory results/temp_0_7)
-
-echo ""
-echo "=== Processing results/temp_0 ==="
-(cd /home/mfm/code/prompt_defense && $CMD --directory results/temp_0)
+( $CMD --directory results/temp_0_7)
 
 echo ""
 echo "✅ Retro-judge processing complete!"

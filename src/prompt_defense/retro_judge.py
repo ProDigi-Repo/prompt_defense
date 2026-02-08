@@ -72,7 +72,7 @@ def update_excel_file(
     """
     try:
         # Load Excel file with openpyxl
-        wb = load_workbook(excel_path)
+        load_workbook(excel_path)
 
         # Read existing Results sheet
         df = pd.read_excel(excel_path, sheet_name="Results")
@@ -95,7 +95,7 @@ def update_excel_file(
         # Update Metadata sheet
         try:
             metadata_df = pd.read_excel(excel_path, sheet_name="Metadata")
-        except:
+        except Exception:
             metadata_df = pd.DataFrame()
 
         # Add judge metadata
@@ -331,7 +331,6 @@ Examples:
     # Process files
     excel_count = 0
     json_count = 0
-    total_leaks = 0
 
     for file_path in tqdm(files, desc="Processing files"):
         excel_updated, json_updated = process_file(

@@ -3,7 +3,7 @@ LLM Judge for detecting system prompt leaks in model responses.
 """
 
 import time
-from typing import Dict, Any
+from typing import Any
 from loguru import logger
 from tqdm import tqdm
 
@@ -160,7 +160,7 @@ class PromptLeakJudge:
             return parsed
 
         except Exception as e:
-            logger.error(f"Judge API call failed: {e}")
+            logger.debug(f"Judge API call failed: {e}")
             raise
 
     def batch_detect_leaks(
@@ -178,7 +178,7 @@ class PromptLeakJudge:
         """
         logger.info(f"Running LLM judge on {len(responses)} responses...")
 
-        results = []
+        results: list[dict[str, Any]] = []
         total_time = 0.0
         error_count = 0
 
