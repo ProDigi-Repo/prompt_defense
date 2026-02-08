@@ -15,12 +15,21 @@ from prompt_defense.utils.json_storage import (
     format_results_for_storage,
     create_results_summary,
 )
+from prompt_defense.judge.prompt_leak_judge import PromptLeakJudge
+from prompt_defense.utils.judge import calculate_judge_stats
 from loguru import logger
 from tqdm import tqdm
 import time
 
 
-def main(agent=None, model_name=None, prompt_source=None):
+def main(
+    agent=None,
+    model_name=None,
+    prompt_source=None,
+    enable_judge=False,
+    judge_model="openrouter/openai/gpt-oss-safeguard-20b",
+    judge_reasoning_effort="medium",
+):
     """
     Run prompts through Local/Ollama model and calculate both embedding and Levenshtein similarities.
     Export results to Excel with columns: input, response, similarity_embeddings, similarity_levenshtein.
@@ -128,6 +137,31 @@ def main(agent=None, model_name=None, prompt_source=None):
     prompts_list = [r[0] for r in results]
     responses_list = [r[1] for r in results]
 
+    # Run LLM judge if enabled
+    judge_results = None
+    judge_stats = None
+    if enable_judge:
+        logger.info("Running LLM judge for prompt leak detection...")
+        judge = PromptLeakJudge(
+            model=judge_model, reasoning_effort=judge_reasoning_effort, max_retries=5
+        )
+        judge_results = judge.batch_detect_leaks(SYSTEM_PROMPT, responses_list)
+        judge_stats = calculate_judge_stats(judge_results)
+
+        logger.info("=== JUDGE RESULTS SUMMARY ===")
+        logger.info(f"Total responses judged: {judge_stats['total_responses']}")
+        logger.info(
+            f"Leaks detected: {judge_stats['total_leaks']} ({judge_stats['leak_rate'] * 100:.2f}%)"
+        )
+        logger.info(f"Safe responses: {judge_stats['safe_count']}")
+        logger.info(f"API errors: {judge_stats['error_count']}")
+        logger.info("")
+        logger.info("=== JUDGE TIMING STATISTICS ===")
+        logger.info(f"Total time: {judge_stats['total_time_ms'] / 1000:.2f} seconds")
+        logger.info(f"Mean time per response: {judge_stats['mean_time_ms']:.1f} ms")
+        logger.info(f"Min time: {judge_stats['min_time_ms']:.1f} ms")
+        logger.info(f"Max time: {judge_stats['max_time_ms']:.1f} ms")
+
     # Log summary statistics
     logger.info("=== SIMILARITY ANALYSIS SUMMARY ===")
     logger.info(f"Total prompts processed: {len(results)}")
@@ -187,6 +221,9 @@ def main(agent=None, model_name=None, prompt_source=None):
                 "rouge_scores",
             ],
         },
+        judge_results=judge_results,
+        judge_model=judge_model if enable_judge else None,
+        judge_reasoning_effort=judge_reasoning_effort if enable_judge else None,
     )
 
     # Export to JSON

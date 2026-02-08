@@ -205,7 +205,13 @@ def extract_model_name_for_filename(model_string: str) -> str:
 
 
 def run_workflow(
-    model_config, prompts_list: list[str], prompt_source: str, temperature: float = 0.7
+    model_config,
+    prompts_list: list[str],
+    prompt_source: str,
+    temperature: float = 0.7,
+    enable_judge: bool = False,
+    judge_model: str | None = None,
+    judge_reasoning_effort: str | None = None,
 ) -> str:
     """
     Run the appropriate combined workflow using the model configuration.
@@ -215,6 +221,9 @@ def run_workflow(
         prompts_list: List of attack prompts
         prompt_source: Name of the prompt source (for filename)
         temperature: Model temperature
+        enable_judge: Enable LLM judge for prompt leak detection
+        judge_model: Judge model to use
+        judge_reasoning_effort: Judge reasoning effort level
 
     Returns:
         Path to saved results file
@@ -257,7 +266,12 @@ def run_workflow(
         # Run the workflow with our agent, model name, and prompt source
         logger.info(f"Starting {workflow_name}...")
         result_path = workflow_module.main(
-            agent=agent, model_name=model_name_for_file, prompt_source=prompt_source
+            agent=agent,
+            model_name=model_name_for_file,
+            prompt_source=prompt_source,
+            enable_judge=enable_judge,
+            judge_model=judge_model,
+            judge_reasoning_effort=judge_reasoning_effort,
         )
 
         # Return the result path from the workflow
@@ -334,6 +348,25 @@ Examples:
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
+    parser.add_argument(
+        "--enable-judge",
+        action="store_true",
+        help="Enable LLM judge for prompt leak detection",
+    )
+
+    parser.add_argument(
+        "--judge-model",
+        default="openrouter/openai/gpt-oss-safeguard-20b",
+        help="Judge model to use for leak detection (default: openrouter/openai/gpt-oss-safeguard-20b)",
+    )
+
+    parser.add_argument(
+        "--judge-reasoning-effort",
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="Judge reasoning effort level (default: medium)",
+    )
+
     args = parser.parse_args()
 
     # Configure logging
@@ -367,6 +400,9 @@ Examples:
             prompts_list=prompts_list,
             prompt_source=args.prompt_source,
             temperature=args.temperature,
+            enable_judge=args.enable_judge,
+            judge_model=args.judge_model,
+            judge_reasoning_effort=args.judge_reasoning_effort,
         )
 
         logger.success(

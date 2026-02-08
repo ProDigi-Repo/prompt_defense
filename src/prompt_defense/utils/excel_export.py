@@ -23,6 +23,9 @@ def export_results_to_excel(
     rouge2_scores: list[float] | None = None,
     rougeL_scores: list[float] | None = None,
     levenshtein_times: list[float] | None = None,
+    judge_results: list[dict] | None = None,
+    judge_model: str | None = None,
+    judge_reasoning_effort: str | None = None,
 ) -> str:
     """
     Export combined workflow results to Excel format.
@@ -41,6 +44,9 @@ def export_results_to_excel(
         rouge2_scores: Optional list of ROUGE-2 scores
         rougeL_scores: Optional list of ROUGE-L scores
         levenshtein_times: Optional list of Levenshtein calculation times in seconds
+        judge_results: Optional list of judge result dictionaries
+        judge_model: Optional judge model name used
+        judge_reasoning_effort: Optional judge reasoning effort level
 
     Returns:
         str: Path to the saved Excel file
@@ -74,6 +80,13 @@ def export_results_to_excel(
             data_dict["similarity_rougeL"] = rougeL_scores
         if levenshtein_times is not None:
             data_dict["levenshtein_time_ms"] = [t * 1000 for t in levenshtein_times]
+
+        # Add judge results if provided
+        if judge_results is not None:
+            data_dict["llm_judge_leaked"] = [r["leaked"] for r in judge_results]
+            data_dict["llm_judge_confidence"] = [r["confidence"] for r in judge_results]
+            data_dict["llm_judge_rationale"] = [r["rationale"] for r in judge_results]
+            data_dict["llm_judge_timing_ms"] = [r["timing_ms"] for r in judge_results]
 
         results_df = pd.DataFrame(data_dict)
 
@@ -195,6 +208,35 @@ def export_results_to_excel(
                         "Min Levenshtein Time (ms)": [min(levenshtein_times) * 1000],
                         "Max Levenshtein Time (s)": [max(levenshtein_times)],
                         "Max Levenshtein Time (ms)": [max(levenshtein_times) * 1000],
+                    }
+                )
+
+            # Add judge statistics if available
+            if judge_results is not None and judge_model is not None:
+                from prompt_defense.utils.judge import calculate_judge_stats
+
+                judge_stats = calculate_judge_stats(judge_results)
+                metadata_dict.update(
+                    {
+                        "Judge Model": [judge_model],
+                        "Judge Reasoning Effort": [judge_reasoning_effort or "medium"],
+                        "Judge Total Leaks Detected": [judge_stats["total_leaks"]],
+                        "Judge Leak Rate": [judge_stats["leak_rate"]],
+                        "Judge Safe Count": [judge_stats["safe_count"]],
+                        "Judge Error Count": [judge_stats["error_count"]],
+                        "Judge Total Time (s)": [judge_stats["total_time_ms"] / 1000],
+                        "Judge Mean Time per Response (ms)": [
+                            judge_stats["mean_time_ms"]
+                        ],
+                        "Judge Min Time per Response (ms)": [
+                            judge_stats["min_time_ms"]
+                        ],
+                        "Judge Max Time per Response (ms)": [
+                            judge_stats["max_time_ms"]
+                        ],
+                        "Judge Confidence Low": [judge_stats["confidence_low"]],
+                        "Judge Confidence Medium": [judge_stats["confidence_medium"]],
+                        "Judge Confidence High": [judge_stats["confidence_high"]],
                     }
                 )
 
