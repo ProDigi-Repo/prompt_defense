@@ -1,0 +1,233 @@
+{
+  "per_model_metrics": {
+    "qwen3_235b_a22b_thinking_2507": {
+      "accuracy": 0.2549019607843137,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "confusion_matrix": [
+        [
+          13,
+          38
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "true_positives": 0,
+      "true_negatives": 13,
+      "false_positives": 38,
+      "false_negatives": 0,
+      "total_samples": 51,
+      "valid_rows": 51,
+      "human_file": "qwen3_235b_a22b_thinking_2507_combined_paraphrased_theft_prompts_20260207_162018.xlsx",
+      "judge_file": "qwen3_235b_a22b_thinking_2507_combined_paraphrased_theft_prompts_20260207_162018.xlsx"
+    },
+    "command_a": {
+      "accuracy": 0.74,
+      "precision": 0.1875,
+      "recall": 1.0,
+      "f1_score": 0.3157894736842105,
+      "confusion_matrix": [
+        [
+          34,
+          13
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "true_positives": 3,
+      "true_negatives": 34,
+      "false_positives": 13,
+      "false_negatives": 0,
+      "total_samples": 50,
+      "valid_rows": 50,
+      "human_file": "command_a_combined_paraphrased_theft_prompts_20260208_173336.xlsx",
+      "judge_file": "command_a_combined_paraphrased_theft_prompts_20260208_173336.xlsx"
+    },
+    "gemini_2_5_flash": {
+      "accuracy": 0.7647058823529411,
+      "precision": 0.2,
+      "recall": 1.0,
+      "f1_score": 0.3333333333333333,
+      "confusion_matrix": [
+        [
+          12,
+          4
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "true_positives": 1,
+      "true_negatives": 12,
+      "false_positives": 4,
+      "false_negatives": 0,
+      "total_samples": 17,
+      "valid_rows": 17,
+      "human_file": "gemini_2_5_flash_combined_theft_prompts_20250929_004002.xlsx",
+      "judge_file": "gemini_2_5_flash_combined_theft_prompts_20250929_004002.xlsx"
+    },
+    "claude_sonnet_4": {
+      "accuracy": 0.5098039215686274,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "confusion_matrix": [
+        [
+          26,
+          25
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "true_positives": 0,
+      "true_negatives": 26,
+      "false_positives": 25,
+      "false_negatives": 0,
+      "total_samples": 51,
+      "valid_rows": 51,
+      "human_file": "claude_sonnet_4_combined_paraphrased_theft_prompts_20260207_155321.xlsx",
+      "judge_file": "claude_sonnet_4_combined_paraphrased_theft_prompts_20260207_155321.xlsx"
+    },
+    "mistral_medium_3_1": {
+      "accuracy": 0.5686274509803921,
+      "precision": 0.15384615384615385,
+      "recall": 1.0,
+      "f1_score": 0.26666666666666666,
+      "confusion_matrix": [
+        [
+          25,
+          22
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      "true_positives": 4,
+      "true_negatives": 25,
+      "false_positives": 22,
+      "false_negatives": 0,
+      "total_samples": 51,
+      "valid_rows": 51,
+      "human_file": "mistral_medium_3_1_combined_paraphrased_theft_prompts_20260207_154905.xlsx",
+      "judge_file": "mistral_medium_3_1_combined_paraphrased_theft_prompts_20260207_154905.xlsx"
+    },
+    "gpt_5_chat": {
+      "accuracy": 0.8823529411764706,
+      "precision": 0.7142857142857143,
+      "recall": 1.0,
+      "f1_score": 0.8333333333333334,
+      "confusion_matrix": [
+        [
+          10,
+          2
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "true_positives": 5,
+      "true_negatives": 10,
+      "false_positives": 2,
+      "false_negatives": 0,
+      "total_samples": 17,
+      "valid_rows": 17,
+      "human_file": "gpt_5_chat_combined_theft_prompts_20250929_002333.xlsx",
+      "judge_file": "gpt_5_chat_combined_theft_prompts_20250929_002333.xlsx"
+    },
+    "gpt_3_5_turbo_instruct": {
+      "accuracy": 0.7843137254901961,
+      "precision": 0.6764705882352942,
+      "recall": 1.0,
+      "f1_score": 0.8070175438596491,
+      "confusion_matrix": [
+        [
+          17,
+          11
+        ],
+        [
+          0,
+          23
+        ]
+      ],
+      "true_positives": 23,
+      "true_negatives": 17,
+      "false_positives": 11,
+      "false_negatives": 0,
+      "total_samples": 51,
+      "valid_rows": 51,
+      "human_file": "gpt_3_5_turbo_instruct_combined_paraphrased_theft_prompts_20260207_153528.xlsx",
+      "judge_file": "gpt_3_5_turbo_instruct_combined_paraphrased_theft_prompts_20260207_153528.xlsx"
+    },
+    "gpt_oss_120b": {
+      "accuracy": 0.8627450980392157,
+      "precision": 0.631578947368421,
+      "recall": 1.0,
+      "f1_score": 0.7741935483870968,
+      "confusion_matrix": [
+        [
+          32,
+          7
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "true_positives": 12,
+      "true_negatives": 32,
+      "false_positives": 7,
+      "false_negatives": 0,
+      "total_samples": 51,
+      "valid_rows": 51,
+      "human_file": "gpt_oss_120b_combined_paraphrased_theft_prompts_20260207_154451.xlsx",
+      "judge_file": "gpt_oss_120b_combined_paraphrased_theft_prompts_20260207_154451.xlsx"
+    }
+  },
+  "overall_metrics": {
+    "accuracy": 0.6556169429097606,
+    "precision": 0.2889733840304182,
+    "recall": 1.0,
+    "f1_score": 0.44837758112094395,
+    "confusion_matrix": [
+      [
+        280,
+        187
+      ],
+      [
+        0,
+        76
+      ]
+    ],
+    "true_positives": 76,
+    "true_negatives": 280,
+    "false_positives": 187,
+    "false_negatives": 0,
+    "total_samples": 543
+  },
+  "file_pairs_processed": 8,
+  "skipped_pairs": [],
+  "skipped_count": 0,
+  "unmatched_human_count": 0,
+  "unmatched_judge_count": 8,
+  "unmatched_human_files": [],
+  "unmatched_judge_files": [
+    "gpt_5_chat_combined_chat_prompts_20250929_002455.xlsx",
+    "qwen3_235b_a22b_thinking_2507_combined_chat_prompts_20250929_003625.xlsx",
+    "command_a_combined_chat_prompts_20251029_201510_temp_0_7.xlsx",
+    "mistral_medium_3_1_combined_chat_prompts_20250929_003048.xlsx",
+    "gpt_3_5_turbo_instruct_combined_chat_prompts_20250929_002232.xlsx",
+    "gpt_oss_120b_combined_chat_prompts_20250929_002749.xlsx",
+    "claude_sonnet_4_combined_chat_prompts_20250929_003932.xlsx",
+    "gemini_2_5_flash_combined_chat_prompts_20250929_004041.xlsx"
+  ]
+}
